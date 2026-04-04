@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Modules\Vehicle\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreVehicleRequest extends FormRequest
+{
+    public function authorize(): bool { return true; }
+
+    public function rules(): array
+    {
+        return [
+            'agency_id'           => 'required|uuid|exists:agencies,id',
+            'brand'               => 'required|string|max:50',
+            'model'               => 'required|string|max:50',
+            'year'                => 'required|integer|min:2000|max:' . (date('Y') + 1),
+            'registration_number' => 'required|string|unique:vehicles,registration_number',
+            'vin'                 => 'required|string|size:17|unique:vehicles,vin',
+            'color'               => 'nullable|string|max:30',
+            'category'            => 'required|in:economy,compact,midsize,suv,luxury,van',
+            'fuel_type'           => 'required|in:gasoline,diesel,electric,hybrid',
+            'transmission'        => 'required|in:manual,automatic',
+            'seats'               => 'required|integer|min:2|max:9',
+            'daily_rate'          => 'required|numeric|min:0',
+            'deposit_amount'      => 'required|numeric|min:0',
+            'mileage'             => 'required|integer|min:0',
+            'status'              => 'nullable|in:available,rented,maintenance,out_of_service',
+            'notes'               => 'nullable|string',
+        ];
+    }
+}
+

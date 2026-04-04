@@ -1,0 +1,327 @@
+<?php
+
+namespace App\Modules\Reservation\Controllers;
+
+use App\Core\Http\Controllers\BaseController;
+use App\Modules\Reservation\Requests\StoreReservationRequest;
+use App\Modules\Reservation\Requests\UpdateReservationRequest;
+use App\Modules\Reservation\Resources\ReservationResource;
+use App\Modules\Reservation\Services\ReservationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class ReservationController extends BaseController
+{
+    public function __construct(protected ReservationService $service) {}
+
+    /**
+     * @OA\Get(path="/reservations", summary="Liste des réservations", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="agency_id", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="vehicle_id", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="client_id", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"pending","confirmed","active","completed","cancelled","no_show"})),
+     *   @OA\Parameter(name="payment_status", in="query", @OA\Schema(type="string", enum={"pending","partial","paid","refunded"})),
+     *   @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
+     *   @OA\Response(response=200, description="Success")
+     * )
+     */
+    public function index(Request $request): JsonResponse
+    {
+        if ($request->filled('search')) {
+            $data = $this->service->search($request->search, $request->integer('per_page', 15));
+            return $this->paginated($data, ReservationResource::class);
+        }
+
+        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status']);
+        $data = $this->service->list($filters, $request->integer('per_page', 15));
+        return $this->paginated($data, ReservationResource::class);
+    }
+
+    /**
+     * @OA\Post(path="/reservations", summary="Créer une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(required=true, @OA\JsonContent(
+     *     required={"agency_id","vehicle_id","client_id","pickup_date","return_date","daily_rate"},
+     *     @OA\Property(property="agency_id", type="string", format="uuid"),
+     *     @OA\Property(property="vehicle_id", type="string", format="uuid"),
+     *     @OA\Property(property="client_id", type="string", format="uuid"),
+     *     @OA\Property(property="pickup_date", type="string", format="date-time"),
+     *     @OA\Property(property="return_date", type="string", format="date-time"),
+     *     @OA\Property(property="pickup_location", type="string"),
+     *     @OA\Property(property="return_location", type="string"),
+     *     @OA\Property(property="daily_rate", type="number"),
+     *     @OA\Property(property="discount_percentage", type="number"),
+     *     @OA\Property(property="additional_fees", type="number"),
+     *     @OA\Property(property="deposit_amount", type="number"),
+     *     @OA\Property(property="payment_method", type="string"),
+     *     @OA\Property(property="notes", type="string")
+     *   )),
+     *   @OA\Response(response=201, description="Reservation created"),
+     *   @OA\Response(response=422, description="Validation error")
+     * )
+     */
+    public function store(StoreReservationRequest $request): JsonResponse
+    {
+        $reservation = $this->service->create($request->validated());
+        return $this->created(new ReservationResource($reservation->load(['agency', 'vehicle', 'client'])), 'Reservation created');
+    }
+
+    /**
+     * @OA\Get(path="/reservations/{id}", summary="Détails d'une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Success"),
+     *   @OA\Response(response=404, description="Not found")
+     * )
+     */
+    public function show(string $id): JsonResponse
+    {
+        return $this->success(new ReservationResource($this->service->find($id)));
+    }
+
+    /**
+     * @OA\Put(path="/reservations/{id}", summary="Modifier une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\JsonContent()),
+     *   @OA\Response(response=200, description="Updated"),
+     *   @OA\Response(response=404, description="Not found")
+     * )
+     */
+    public function update(UpdateReservationRequest $request, string $id): JsonResponse
+    {
+        $reservation = $this->service->update($id, $request->validated());
+        return $this->success(new ReservationResource($reservation), 'Reservation updated');
+    }
+
+    /**
+     * @OA\Delete(path="/reservations/{id}", summary="Supprimer une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Deleted"),
+     *   @OA\Response(response=404, description="Not found")
+     * )
+     */
+    public function destroy(string $id): JsonResponse
+    {
+        $this->service->delete($id);
+        return $this->success(null, 'Reservation deleted');
+    }
+
+    /**
+     * @OA\Patch(path="/reservations/{id}/confirm", summary="Confirmer une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Reservation confirmed")
+     * )
+     */
+    public function confirm(string $id): JsonResponse
+    {
+        $reservation = $this->service->confirm($id);
+        return $this->success(new ReservationResource($reservation), 'Reservation confirmed');
+    }
+
+    /**
+     * @OA\Patch(path="/reservations/{id}/activate", summary="Activer une réservation (départ)", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=false, @OA\JsonContent(
+     *     @OA\Property(property="initial_mileage", type="integer"),
+     *     @OA\Property(property="fuel_level_pickup", type="string", enum={"empty","quarter","half","three_quarters","full"})
+     *   )),
+     *   @OA\Response(response=200, description="Activated")
+     * )
+     */
+    public function activate(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'initial_mileage'   => 'nullable|integer|min:0',
+            'fuel_level_pickup' => 'nullable|in:empty,quarter,half,three_quarters,full',
+        ]);
+        $reservation = $this->service->activate($id, $data);
+        return $this->success(new ReservationResource($reservation), 'Reservation activated (pickup done)');
+    }
+
+    /**
+     * @OA\Patch(path="/reservations/{id}/complete", summary="Compléter une réservation (retour)", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=false, @OA\JsonContent(
+     *     @OA\Property(property="final_mileage", type="integer"),
+     *     @OA\Property(property="fuel_level_return", type="string", enum={"empty","quarter","half","three_quarters","full"}),
+     *     @OA\Property(property="additional_fees", type="number")
+     *   )),
+     *   @OA\Response(response=200, description="Completed")
+     * )
+     */
+    public function complete(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'final_mileage'    => 'nullable|integer|min:0',
+            'fuel_level_return' => 'nullable|in:empty,quarter,half,three_quarters,full',
+            'additional_fees'   => 'nullable|numeric|min:0',
+        ]);
+        $reservation = $this->service->complete($id, $data);
+        return $this->success(new ReservationResource($reservation), 'Reservation completed (return done)');
+    }
+
+    /**
+     * @OA\Patch(path="/reservations/{id}/cancel", summary="Annuler une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=false, @OA\JsonContent(
+     *     @OA\Property(property="reason", type="string")
+     *   )),
+     *   @OA\Response(response=200, description="Cancelled")
+     * )
+     */
+    public function cancel(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['reason' => 'nullable|string']);
+        $reservation = $this->service->cancel($id, $request->reason);
+        return $this->success(new ReservationResource($reservation), 'Reservation cancelled');
+    }
+
+    /**
+     * @OA\Get(path="/reservations/calendar", summary="Vue calendrier", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="agency_id", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="start_date", in="query", @OA\Schema(type="string", format="date")),
+     *   @OA\Parameter(name="end_date", in="query", @OA\Schema(type="string", format="date")),
+     *   @OA\Response(response=200, description="Success")
+     * )
+     */
+    public function calendar(Request $request): JsonResponse
+    {
+        $filters = $request->only(['agency_id', 'start_date', 'end_date']);
+        $data = $this->service->calendar($filters);
+        return $this->success(ReservationResource::collection($data));
+    }
+
+    /**
+     * @OA\Get(path="/reservations/overdue", summary="Réservations en retard", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
+     *   @OA\Response(response=200, description="Success")
+     * )
+     */
+    public function overdue(Request $request): JsonResponse
+    {
+        return $this->paginated($this->service->overdue($request->integer('per_page', 15)), ReservationResource::class);
+    }
+
+    /**
+     * @OA\Get(path="/reservations/statistics", summary="Statistiques réservations", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="agency_id", in="query", @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Success")
+     * )
+     */
+    public function statistics(Request $request): JsonResponse
+    {
+        return $this->success($this->service->statistics($request->only(['agency_id'])));
+    }
+
+    /**
+     * @OA\Post(path="/reservations/{id}/contract", summary="Upload contrat PDF", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data",
+     *     @OA\Schema(@OA\Property(property="contract", type="string", format="binary"))
+     *   )),
+     *   @OA\Response(response=200, description="Uploaded")
+     * )
+     */
+    public function uploadContract(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['contract' => 'required|file|mimes:pdf|max:10240']);
+        $reservation = $this->service->find($id);
+        $reservation->uploadMedia($request->file('contract'), 'contract');
+        return $this->success(['url' => $reservation->getFirstMediaUrl('contract')], 'Contract uploaded');
+    }
+
+    /**
+     * @OA\Post(path="/reservations/{id}/pickup-photos", summary="Upload photos départ", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data",
+     *     @OA\Schema(@OA\Property(property="photos[]", type="array", @OA\Items(type="string", format="binary")))
+     *   )),
+     *   @OA\Response(response=200, description="Uploaded")
+     * )
+     */
+    public function uploadPickupPhotos(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['photos' => 'required|array|max:20', 'photos.*' => 'image|mimes:jpeg,png,webp|max:5120']);
+        $reservation = $this->service->find($id);
+        $reservation->uploadMultipleMedia($request->file('photos'), 'pickup_photos');
+        return $this->success($reservation->getMediaByCollection('pickup_photos'), 'Pickup photos uploaded');
+    }
+
+    /**
+     * @OA\Post(path="/reservations/{id}/return-photos", summary="Upload photos retour", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data",
+     *     @OA\Schema(@OA\Property(property="photos[]", type="array", @OA\Items(type="string", format="binary")))
+     *   )),
+     *   @OA\Response(response=200, description="Uploaded")
+     * )
+     */
+    public function uploadReturnPhotos(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['photos' => 'required|array|max:20', 'photos.*' => 'image|mimes:jpeg,png,webp|max:5120']);
+        $reservation = $this->service->find($id);
+        $reservation->uploadMultipleMedia($request->file('photos'), 'return_photos');
+        return $this->success($reservation->getMediaByCollection('return_photos'), 'Return photos uploaded');
+    }
+
+    /**
+     * @OA\Post(path="/reservations/{id}/damage-report", summary="Upload rapport dommages", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data",
+     *     @OA\Schema(@OA\Property(property="damage_report", type="string", format="binary"))
+     *   )),
+     *   @OA\Response(response=200, description="Uploaded")
+     * )
+     */
+    public function uploadDamageReport(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['damage_report' => 'required|file|max:10240']);
+        $reservation = $this->service->find($id);
+        $reservation->uploadMedia($request->file('damage_report'), 'damage_reports');
+        return $this->success($reservation->getMediaByCollection('damage_reports'), 'Damage report uploaded');
+    }
+
+    /**
+     * @OA\Delete(path="/reservations/{id}/media/{mediaId}", summary="Supprimer un média", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Parameter(name="mediaId", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="Deleted")
+     * )
+     */
+    public function deleteMedia(string $id, int $mediaId): JsonResponse
+    {
+        $this->service->find($id)->media()->findOrFail($mediaId)->delete();
+        return $this->success(null, 'Media deleted');
+    }
+
+    /**
+     * @OA\Get(path="/reservations/{id}/invoice", summary="Générer facture réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Invoice data")
+     * )
+     */
+    public function generateInvoice(string $id): JsonResponse
+    {
+        $reservation = $this->service->find($id);
+        // TODO: Implement PDF generation
+        return $this->success([
+            'reservation_number' => $reservation->reservation_number,
+            'client'             => $reservation->client->full_name,
+            'vehicle'            => $reservation->vehicle->full_name,
+            'total_amount'       => $reservation->total_amount,
+            'message'            => 'Invoice PDF generation to be implemented',
+        ]);
+    }
+
+    /**
+     * @OA\Post(path="/reservations/{id}/restore", summary="Restaurer une réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Restored")
+     * )
+     */
+    public function restore(string $id): JsonResponse
+    {
+        $reservation = $this->service->restore($id);
+        return $this->success(new ReservationResource($reservation), 'Reservation restored');
+    }
+}
+
