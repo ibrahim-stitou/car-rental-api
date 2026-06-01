@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             VehicleSeeder::class,
             ClientSeeder::class,
             ReservationSeeder::class,
+            SettingsSeeder::class,
         ]);
     }
 }

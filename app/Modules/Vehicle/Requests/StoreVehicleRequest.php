@@ -18,15 +18,18 @@ class StoreVehicleRequest extends FormRequest
             'registration_number' => 'required|string|unique:vehicles,registration_number',
             'vin'                 => 'required|string|size:17|unique:vehicles,vin',
             'color'               => 'nullable|string|max:30',
-            'category'            => 'required|in:economy,compact,midsize,suv,luxury,van',
+            'category'            => 'required|in:sedan,suv,van,truck,convertible,coupe,hatchback,minivan',
             'fuel_type'           => 'required|in:gasoline,diesel,electric,hybrid',
             'transmission'        => 'required|in:manual,automatic',
             'seats'               => 'required|integer|min:2|max:9',
             'daily_rate'          => 'required|numeric|min:0',
             'deposit_amount'      => 'required|numeric|min:0',
             'mileage'             => 'required|integer|min:0',
-            'status'              => 'nullable|in:available,rented,maintenance,out_of_service',
-            'notes'               => 'nullable|string',
+            'status'                   => 'nullable|in:available,rented,maintenance,out_of_service',
+            'notes'                    => 'nullable|string',
+            'show_on_website'          => 'nullable|boolean',
+            'website_description'      => 'nullable|string',
+            'website_price_override'   => 'nullable|numeric|min:0',
         ];
     }
 }

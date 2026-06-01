@@ -7,12 +7,17 @@ use App\Modules\Billing\Requests\StoreBillingDocumentRequest;
 use App\Modules\Billing\Requests\UpdateBillingDocumentRequest;
 use App\Modules\Billing\Resources\BillingDocumentResource;
 use App\Modules\Billing\Services\BillingService;
+use App\Services\PdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class BillingController extends BaseController
 {
-    public function __construct(protected BillingService $service) {}
+    public function __construct(
+        protected BillingService $service,
+        protected PdfService $pdfService,
+    ) {}
 
     /**
      * @OA\Get(path="/billing", summary="Liste des documents de facturation", tags={"Billing"}, security={{"bearerAuth":{}}},
@@ -165,6 +170,43 @@ class BillingController extends BaseController
     {
         $filters = $request->only(['agency_id', 'type']);
         return $this->success($this->service->statistics($filters));
+    }
+
+    /**
+     * @OA\Get(path="/billing/{id}/pdf/view", summary="Visualiser le document en PDF", tags={"Billing"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="PDF stream")
+     * )
+     */
+    public function viewPdf(string $id): Response
+    {
+        $document = $this->service->find($id);
+        return $this->pdfService->generateBillingDocument($document, false);
+    }
+
+    /**
+     * @OA\Get(path="/billing/{id}/pdf/download", summary="Télécharger le document en PDF", tags={"Billing"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="PDF download")
+     * )
+     */
+    public function downloadPdf(string $id): Response
+    {
+        $document = $this->service->find($id);
+        return $this->pdfService->generateBillingDocument($document, true);
+    }
+
+    /**
+     * @OA\Post(path="/billing/{id}/pdf/generate", summary="Générer et sauvegarder le PDF dans la médiathèque", tags={"Billing"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="URL du PDF sauvegardé")
+     * )
+     */
+    public function generatePdf(string $id): JsonResponse
+    {
+        $document = $this->service->find($id);
+        $url      = $this->pdfService->saveBillingDocumentToMedia($document);
+        return $this->success(['url' => $url], 'PDF généré et sauvegardé');
     }
 
     public function uploadPdf(Request $request, string $id): JsonResponse

@@ -4,6 +4,8 @@ use App\Modules\Reservation\Controllers\ReservationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:api')->prefix('reservations')->group(function () {
+    Route::get('/{id}/contract/pdf',     [ReservationController::class, 'contractPdf']);
+    Route::get('/{id}/contract/pdf/save',[ReservationController::class, 'saveContractPdf']);
     Route::get('/',                        [ReservationController::class, 'index']);
     Route::post('/',                       [ReservationController::class, 'store'])->middleware('permission:create-reservation');
     Route::get('/calendar',                [ReservationController::class, 'calendar']);

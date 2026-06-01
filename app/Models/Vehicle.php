@@ -26,6 +26,7 @@ class Vehicle extends Model implements HasMedia, Auditable
         'vin', 'color', 'category', 'fuel_type', 'transmission',
         'seats', 'daily_rate', 'deposit_amount', 'mileage',
         'status', 'is_active', 'notes',
+        'show_on_website', 'website_description', 'website_price_override',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -38,7 +39,9 @@ class Vehicle extends Model implements HasMedia, Auditable
             'daily_rate'     => 'decimal:2',
             'deposit_amount' => 'decimal:2',
             'mileage'        => 'integer',
-            'is_active'      => 'boolean',
+            'is_active'               => 'boolean',
+            'show_on_website'         => 'boolean',
+            'website_price_override'  => 'decimal:2',
         ];
     }
 

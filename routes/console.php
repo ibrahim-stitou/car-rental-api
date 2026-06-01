@@ -16,3 +16,4 @@ Schedule::command('notifications:send-alerts --type=vignettes --days=30')->daily
 Schedule::command('notifications:send-alerts --type=maintenances')->dailyAt('08:00');
 Schedule::command('notifications:send-alerts --type=billing')->dailyAt('09:00');
 Schedule::command('notifications:send-alerts --type=clients --days=60')->weeklyOn(1, '08:00');
+Schedule::command('files:cleanup-temp')->dailyAt('03:00');

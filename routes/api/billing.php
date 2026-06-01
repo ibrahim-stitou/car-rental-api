@@ -4,6 +4,9 @@ use App\Modules\Billing\Controllers\BillingController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:api')->prefix('billing')->group(function () {
+    Route::get('/{id}/pdf/view',  [BillingController::class, 'viewPdf']);
+    Route::get('/{id}/pdf/download', [BillingController::class, 'downloadPdf']);
+    Route::post('/{id}/pdf/generate', [BillingController::class, 'generatePdf']);
     Route::get('/',                            [BillingController::class, 'index']);
     Route::get('/datatable',                   [BillingController::class, 'datatable']);
     Route::post('/',                           [BillingController::class, 'store'])->middleware('permission:create-billing');

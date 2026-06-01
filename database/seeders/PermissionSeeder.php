@@ -38,6 +38,10 @@ class PermissionSeeder extends Seeder
             'view-logs',
             // Billing
             'view-billing', 'create-billing', 'edit-billing', 'delete-billing', 'approve-billing',
+            // Settings
+            'manage-settings',
+            // Website
+            'manage-website',
         ];
 
         foreach ($permissions as $permission) {

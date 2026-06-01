@@ -7,12 +7,17 @@ use App\Modules\Reservation\Requests\StoreReservationRequest;
 use App\Modules\Reservation\Requests\UpdateReservationRequest;
 use App\Modules\Reservation\Resources\ReservationResource;
 use App\Modules\Reservation\Services\ReservationService;
+use App\Services\PdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class ReservationController extends BaseController
 {
-    public function __construct(protected ReservationService $service) {}
+    public function __construct(
+        protected ReservationService $service,
+        protected PdfService $pdfService,
+    ) {}
 
     /**
      * @OA\Get(path="/reservations", summary="Liste des réservations", tags={"Reservations"}, security={{"bearerAuth":{}}},
@@ -294,7 +299,7 @@ class ReservationController extends BaseController
     }
 
     /**
-     * @OA\Get(path="/reservations/{id}/invoice", summary="Générer facture réservation", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     * @OA\Get(path="/reservations/{id}/invoice", summary="Informations de facturation", tags={"Reservations"}, security={{"bearerAuth":{}}},
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
      *   @OA\Response(response=200, description="Invoice data")
      * )
@@ -302,14 +307,33 @@ class ReservationController extends BaseController
     public function generateInvoice(string $id): JsonResponse
     {
         $reservation = $this->service->find($id);
-        // TODO: Implement PDF generation
-        return $this->success([
-            'reservation_number' => $reservation->reservation_number,
-            'client'             => $reservation->client->full_name,
-            'vehicle'            => $reservation->vehicle->full_name,
-            'total_amount'       => $reservation->total_amount,
-            'message'            => 'Invoice PDF generation to be implemented',
-        ]);
+        return $this->success(new ReservationResource($reservation));
+    }
+
+    /**
+     * @OA\Get(path="/reservations/{id}/contract/pdf", summary="Visualiser le contrat en PDF", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Parameter(name="download", in="query", @OA\Schema(type="boolean", default=false)),
+     *   @OA\Response(response=200, description="PDF stream")
+     * )
+     */
+    public function contractPdf(Request $request, string $id): Response
+    {
+        $reservation = $this->service->find($id);
+        return $this->pdfService->generateReservationContract($reservation, $request->boolean('download'));
+    }
+
+    /**
+     * @OA\Get(path="/reservations/{id}/contract/pdf/save", summary="Générer et sauvegarder le contrat PDF dans la médiathèque", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="URL du PDF sauvegardé")
+     * )
+     */
+    public function saveContractPdf(string $id): JsonResponse
+    {
+        $reservation = $this->service->find($id);
+        $url         = $this->pdfService->saveReservationContractToMedia($reservation);
+        return $this->success(['url' => $url], 'Contract PDF generated and saved');
     }
 
     /**

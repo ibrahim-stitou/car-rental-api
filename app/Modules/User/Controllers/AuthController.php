@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -187,9 +188,13 @@ class AuthController extends BaseController
             return $this->validationError($validator->errors());
         }
 
-        // In production, send password reset email
-        // For now, return success message
-        return $this->success(null, 'Password reset link sent to your email');
+        $status = Password::broker()->sendResetLink(['email' => $request->email]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return $this->success(null, 'Password reset link sent to your email');
+        }
+
+        return $this->error(__($status), 422);
     }
 
     /**
@@ -221,11 +226,20 @@ class AuthController extends BaseController
             return $this->validationError($validator->errors());
         }
 
-        // In production, validate token and reset password
-        $user = User::where('email', $request->email)->first();
-        $user->update(['password' => $request->password]);
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->update(['password' => $password]);
+                $user->setRememberToken(\Illuminate\Support\Str::random(60));
+                $user->save();
+            }
+        );
 
-        return $this->success(null, 'Password reset successfully');
+        if ($status === Password::PASSWORD_RESET) {
+            return $this->success(null, 'Password reset successfully');
+        }
+
+        return $this->error(__($status), 422);
     }
 
     protected function respondWithToken(string $token, $user): JsonResponse

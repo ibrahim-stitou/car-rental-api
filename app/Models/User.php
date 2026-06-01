@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Auth\Passwords\CanResetPassword;
+use Illuminate\Contracts\Auth\CanResetPassword as CanResetPasswordContract;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -18,10 +20,10 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable implements JWTSubject, HasMedia, Auditable
+class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, CanResetPasswordContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasUuid, SoftDeletes, HasRoles, InteractsWithMedia, AuditableTrait;
+    use HasFactory, Notifiable, HasUuid, SoftDeletes, HasRoles, InteractsWithMedia, AuditableTrait, CanResetPassword;
 
     protected $fillable = [
         'agency_id', 'first_name', 'last_name', 'email',

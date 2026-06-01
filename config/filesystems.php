@@ -47,6 +47,13 @@ return [
             'report' => false,
         ],
 
+        'temp' => [
+            'driver'     => 'local',
+            'root'       => storage_path('app/temp'),
+            'visibility' => 'private',
+            'throw'      => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),
