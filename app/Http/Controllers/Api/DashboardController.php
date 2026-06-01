@@ -13,6 +13,7 @@ use App\Models\Vehicle;
 use App\Models\Vignette;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends BaseController
@@ -26,34 +27,37 @@ class DashboardController extends BaseController
     public function statistics(Request $request): JsonResponse
     {
         $agencyId = $request->query('agency_id');
+        $cacheKey = 'dashboard_stats_' . ($agencyId ?? 'global');
 
-        $vehicles      = $this->vehicleStats($agencyId);
-        $reservations  = $this->reservationStats($agencyId);
-        $billing       = $this->billingStats($agencyId);
-        $clients       = $this->clientStats($agencyId);
-        $expiring      = $this->expiringStats($agencyId);
-        $monthlyRevenue = $this->monthlyRevenue($agencyId);
+        $data = Cache::remember($cacheKey, 300, function () use ($agencyId) {
+            return [
+                'vehicles'            => $this->vehicleStats($agencyId),
+                'reservations'        => $this->reservationStats($agencyId),
+                'billing'             => $this->billingStats($agencyId),
+                'clients'             => $this->clientStats($agencyId),
+                'expiring'            => $this->expiringStats($agencyId),
+                'monthly_revenue'     => $this->monthlyRevenue($agencyId),
+                'recent_reservations' => $this->recentReservations($agencyId),
+            ];
+        });
 
-        return $this->success([
-            'vehicles'        => $vehicles,
-            'reservations'    => $reservations,
-            'billing'         => $billing,
-            'clients'         => $clients,
-            'expiring'        => $expiring,
-            'monthly_revenue' => $monthlyRevenue,
-        ]);
+        return $this->success($data);
     }
 
     private function vehicleStats(?string $agencyId): array
     {
-        $q = Vehicle::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
+        $counts = Vehicle::query()
+            ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
+            ->selectRaw('status, COUNT(*) as cnt')
+            ->groupBy('status')
+            ->pluck('cnt', 'status');
 
         return [
-            'total'          => (clone $q)->count(),
-            'available'      => (clone $q)->where('status', 'available')->count(),
-            'rented'         => (clone $q)->where('status', 'rented')->count(),
-            'maintenance'    => (clone $q)->where('status', 'maintenance')->count(),
-            'out_of_service' => (clone $q)->where('status', 'out_of_service')->count(),
+            'total'          => $counts->sum(),
+            'available'      => (int) ($counts['available'] ?? 0),
+            'rented'         => (int) ($counts['rented'] ?? 0),
+            'maintenance'    => (int) ($counts['maintenance'] ?? 0),
+            'out_of_service' => (int) ($counts['out_of_service'] ?? 0),
         ];
     }
 
@@ -61,30 +65,52 @@ class DashboardController extends BaseController
     {
         $q = Reservation::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
 
+        $counts = (clone $q)->selectRaw('status, COUNT(*) as cnt')->groupBy('status')->pluck('cnt', 'status');
+
         return [
-            'total'     => (clone $q)->count(),
-            'pending'   => (clone $q)->where('status', 'pending')->count(),
-            'confirmed' => (clone $q)->where('status', 'confirmed')->count(),
-            'active'    => (clone $q)->where('status', 'active')->count(),
-            'completed' => (clone $q)->where('status', 'completed')->count(),
-            'cancelled' => (clone $q)->where('status', 'cancelled')->count(),
-            'overdue'   => (clone $q)->where('status', 'active')
-                ->where('return_date', '<', now())->count(),
+            'total'            => $counts->sum(),
+            'pending'          => (int) ($counts['pending']   ?? 0),
+            'confirmed'        => (int) ($counts['confirmed'] ?? 0),
+            'active'           => (int) ($counts['active']    ?? 0),
+            'completed'        => (int) ($counts['completed'] ?? 0),
+            'cancelled'        => (int) ($counts['cancelled'] ?? 0),
+            'overdue'          => (clone $q)->where('status', 'active')->where('return_date', '<', now())->count(),
+            'pending_action'   => (int) ($counts['pending'] ?? 0) + (int) ($counts['confirmed'] ?? 0),
+            'upcoming_returns' => (clone $q)->where('status', 'active')->whereBetween('return_date', [now(), now()->addDays(7)])->count(),
+            'this_month'       => (clone $q)->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
         ];
+    }
+
+    private function recentReservations(?string $agencyId): mixed
+    {
+        return Reservation::with(['vehicle:id,brand,model,registration_number', 'client:id,first_name,last_name'])
+            ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
+            ->orderByDesc('created_at')
+            ->limit(8)
+            ->get(['id', 'reservation_number', 'status', 'pickup_date', 'return_date', 'total_amount', 'vehicle_id', 'client_id']);
     }
 
     private function billingStats(?string $agencyId): array
     {
         $q = BillingDocument::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
 
+        $revenueThisMonth = (float) (clone $q)->where('type', 'FA')->where('status', 'paid')
+            ->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)
+            ->sum('total_amount');
+
+        $revenueLastMonth = (float) (clone $q)->where('type', 'FA')->where('status', 'paid')
+            ->whereMonth('created_at', now()->subMonth()->month)
+            ->whereYear('created_at', now()->subMonth()->year)
+            ->sum('total_amount');
+
         return [
-            'total_invoices' => (clone $q)->where('type', 'FA')->count(),
-            'total_revenue'  => (float) (clone $q)->where('type', 'FA')->where('status', 'paid')
-                ->sum('total_amount'),
-            'pending_amount' => (float) (clone $q)->where('type', 'FA')
-                ->whereIn('status', ['pending', 'approved'])->sum('total_amount'),
-            'draft_count'    => (clone $q)->where('status', 'draft')->count(),
-            'paid_count'     => (clone $q)->where('status', 'paid')->count(),
+            'total_invoices'      => (clone $q)->where('type', 'FA')->count(),
+            'total_revenue'       => (float) (clone $q)->where('type', 'FA')->where('status', 'paid')->sum('total_amount'),
+            'revenue_this_month'  => $revenueThisMonth,
+            'revenue_last_month'  => $revenueLastMonth,
+            'pending_amount'      => (float) (clone $q)->where('type', 'FA')->whereIn('status', ['pending', 'approved'])->sum('total_amount'),
+            'draft_count'         => (clone $q)->where('status', 'draft')->count(),
+            'paid_count'          => (clone $q)->where('status', 'paid')->count(),
         ];
     }
 
@@ -93,8 +119,11 @@ class DashboardController extends BaseController
         $q = Client::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
 
         return [
-            'total'  => (clone $q)->count(),
-            'active' => (clone $q)->where('is_active', true)->count(),
+            'total'       => (clone $q)->count(),
+            'active'      => (clone $q)->where('is_blacklisted', false)->count(),
+            'blacklisted' => (clone $q)->where('is_blacklisted', true)->count(),
+            'new_this_month' => (clone $q)->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)->count(),
         ];
     }
 
@@ -126,7 +155,7 @@ class DashboardController extends BaseController
         return compact('insurances', 'inspections', 'vignettes', 'maintenances');
     }
 
-    private function monthlyRevenue(?string $agencyId): mixed
+    private function monthlyRevenue(?string $agencyId): array
     {
         return BillingDocument::select(
             DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
@@ -138,6 +167,9 @@ class DashboardController extends BaseController
             ->where('created_at', '>=', now()->subMonths(12))
             ->groupBy('month')
             ->orderBy('month')
-            ->get();
+            ->get()
+            ->map(fn($row) => ['month' => $row->month, 'revenue' => (float) $row->revenue])
+            ->values()
+            ->toArray();
     }
 }

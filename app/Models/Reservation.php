@@ -104,6 +104,7 @@ class Reservation extends Model implements HasMedia, Auditable
     public function vehicle(): BelongsTo { return $this->belongsTo(Vehicle::class); }
     public function client(): BelongsTo { return $this->belongsTo(Client::class); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany { return $this->hasMany(ReservationPayment::class); }
 
     // Media
     public function registerMediaCollections(): void

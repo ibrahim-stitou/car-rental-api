@@ -10,6 +10,7 @@ Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::post('/',                       [ReservationController::class, 'store'])->middleware('permission:create-reservation');
     Route::get('/calendar',                [ReservationController::class, 'calendar']);
     Route::get('/overdue',                 [ReservationController::class, 'overdue']);
+    Route::get('/credits',                 [ReservationController::class, 'credits']);
     Route::get('/statistics',              [ReservationController::class, 'statistics']);
     Route::get('/{id}',                    [ReservationController::class, 'show']);
     Route::put('/{id}',                    [ReservationController::class, 'update'])->middleware('permission:edit-reservation');
@@ -18,6 +19,7 @@ Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::patch('/{id}/activate',         [ReservationController::class, 'activate']);
     Route::patch('/{id}/complete',         [ReservationController::class, 'complete']);
     Route::patch('/{id}/cancel',           [ReservationController::class, 'cancel']);
+    Route::patch('/{id}/no-show',          [ReservationController::class, 'noShow']);
     Route::post('/{id}/contract',          [ReservationController::class, 'uploadContract']);
     Route::post('/{id}/pickup-photos',     [ReservationController::class, 'uploadPickupPhotos']);
     Route::post('/{id}/return-photos',     [ReservationController::class, 'uploadReturnPhotos']);

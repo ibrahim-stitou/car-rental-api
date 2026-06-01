@@ -3,6 +3,7 @@
 namespace App\Modules\Vehicle\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
+use App\Models\Expense;
 use App\Modules\Vehicle\Requests\StoreVehicleRequest;
 use App\Modules\Vehicle\Requests\UpdateVehicleRequest;
 use App\Modules\Vehicle\Resources\VehicleResource;
@@ -206,6 +207,76 @@ class VehicleController extends BaseController
     {
         $vehicle = $this->service->restore($id);
         return $this->success(new VehicleResource($vehicle), 'Vehicle restored successfully');
+    }
+
+    public function statistics(string $id): JsonResponse
+    {
+        $vehicle = $this->service->find($id);
+
+        $rq = $vehicle->reservations();
+
+        $totalRevenue = (float) (clone $rq)->where('reservations.status', 'completed')
+            ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')
+            ->sum('reservation_payments.amount');
+
+        $maintenanceCost = (float) $vehicle->maintenances()->where('status', 'completed')->sum('actual_cost');
+        $expenseCost     = (float) Expense::where('vehicle_id', $id)->sum('amount');
+
+        $activeReservation = $vehicle->reservations()
+            ->whereIn('status', ['active', 'confirmed'])
+            ->with('client:id,first_name,last_name,phone')
+            ->latest()
+            ->first();
+
+        $currentInsurance = $vehicle->insurances()
+            ->where('end_date', '>=', now())
+            ->orderBy('end_date')
+            ->first(['id', 'insurance_company', 'policy_number', 'end_date', 'insurance_type']);
+
+        $lastInspection = $vehicle->technicalInspections()
+            ->orderByDesc('inspection_date')
+            ->first(['id', 'inspection_date', 'next_inspection_date', 'result', 'center']);
+
+        $currentVignette = $vehicle->vignettes()
+            ->where('expiry_date', '>=', now())
+            ->orderByDesc('expiry_date')
+            ->first(['id', 'year', 'expiry_date', 'payment_status']);
+
+        $pendingMaintenances = $vehicle->maintenances()
+            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->orderBy('maintenance_date')
+            ->get(['id', 'title', 'maintenance_date', 'status', 'priority']);
+
+        return $this->success([
+            'vehicle' => new VehicleResource($vehicle),
+            'reservations' => [
+                'total'       => (clone $rq)->count(),
+                'completed'   => (clone $rq)->where('reservations.status', 'completed')->count(),
+                'active'      => (clone $rq)->whereIn('reservations.status', ['active', 'confirmed', 'pending'])->count(),
+                'total_days'  => (int) (clone $rq)->where('reservations.status', 'completed')->sum('total_days'),
+            ],
+            'financials' => [
+                'total_revenue'    => $totalRevenue,
+                'maintenance_cost' => $maintenanceCost,
+                'expense_cost'     => $expenseCost,
+                'net_revenue'      => $totalRevenue - $maintenanceCost - $expenseCost,
+            ],
+            'active_reservation'   => $activeReservation,
+            'current_insurance'    => $currentInsurance,
+            'last_inspection'      => $lastInspection,
+            'current_vignette'     => $currentVignette,
+            'pending_maintenances' => $pendingMaintenances,
+        ]);
+    }
+
+    public function expenses(string $id): JsonResponse
+    {
+        $perPage = request()->integer('per_page', 15);
+        $expenses = Expense::with('recorder:id,first_name,last_name')
+            ->where('vehicle_id', $id)
+            ->orderByDesc('expense_date')
+            ->paginate($perPage);
+        return $this->paginated($expenses, null);
     }
 }
 

@@ -17,6 +17,8 @@ Route::middleware('auth:api')->prefix('vehicles')->group(function () {
     Route::patch('/{id}/status',             [VehicleController::class, 'updateStatus']);
     Route::get('/{id}/history',              [VehicleController::class, 'history']);
     Route::get('/{id}/reservations',         [VehicleController::class, 'reservations']);
+    Route::get('/{id}/statistics',           [VehicleController::class, 'statistics']);
+    Route::get('/{id}/expenses',             [VehicleController::class, 'expenses']);
     Route::post('/{id}/restore',             [VehicleController::class, 'restore']);
 });
 

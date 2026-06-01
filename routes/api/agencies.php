@@ -13,6 +13,7 @@ Route::middleware(['auth:api', 'role:super-admin|admin'])->prefix('agencies')->g
     Route::post('/{id}/documents',         [AgencyController::class, 'uploadDocuments']);
     Route::delete('/{id}/media/{mediaId}', [AgencyController::class, 'deleteMedia']);
     Route::get('/{id}/vehicles',           [AgencyController::class, 'vehicles']);
+    Route::get('/{id}/statistics',         [AgencyController::class, 'statistics']);
     Route::post('/{id}/restore',           [AgencyController::class, 'restore']);
 });
 

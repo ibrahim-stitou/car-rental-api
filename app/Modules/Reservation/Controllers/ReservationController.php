@@ -342,10 +342,35 @@ class ReservationController extends BaseController
      *   @OA\Response(response=200, description="Restored")
      * )
      */
+    public function noShow(string $id): JsonResponse
+    {
+        $reservation = $this->service->noShow($id);
+        return $this->success(new ReservationResource($reservation), 'Réservation marquée non présentée');
+    }
+
     public function restore(string $id): JsonResponse
     {
         $reservation = $this->service->restore($id);
         return $this->success(new ReservationResource($reservation), 'Reservation restored');
+    }
+
+    public function credits(Request $request): JsonResponse
+    {
+        $perPage  = $request->integer('per_page', 15);
+        $agencyId = $request->query('agency_id');
+
+        $credits = \App\Models\Reservation::query()
+            ->whereIn('status', ['completed', 'active'])
+            ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
+            ->selectRaw('reservations.*, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+            ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
+            ->groupBy('reservations.id')
+            ->havingRaw('credit_amount > 0')
+            ->with(['vehicle:id,brand,model,registration_number', 'client:id,first_name,last_name,phone', 'agency:id,name'])
+            ->orderByDesc('credit_amount')
+            ->paginate($perPage);
+
+        return $this->paginated($credits, null);
     }
 }
 

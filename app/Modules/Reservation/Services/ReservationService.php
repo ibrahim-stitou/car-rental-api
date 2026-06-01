@@ -140,6 +140,16 @@ class ReservationService
         return $reservation;
     }
 
+    public function noShow(string $id): Reservation
+    {
+        $reservation = $this->repository->findByIdOrFail($id);
+        $reservation->update(['status' => 'no_show']);
+        if ($reservation->vehicle->status === 'rented') {
+            $reservation->vehicle->update(['status' => 'available']);
+        }
+        return $reservation->fresh();
+    }
+
     public function overdue(int $perPage = 15): LengthAwarePaginator
     {
         return Reservation::overdue()->with(['vehicle', 'client'])->paginate($perPage);

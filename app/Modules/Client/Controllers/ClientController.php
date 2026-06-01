@@ -249,5 +249,43 @@ class ClientController extends BaseController
         $client = $this->service->restore($id);
         return $this->success(new ClientResource($client), 'Client restored');
     }
+
+    public function statistics(string $id): JsonResponse
+    {
+        $client = $this->service->find($id);
+        $rq = $client->reservations();
+
+        $totalAmount = (float) (clone $rq)->whereNotIn('status', ['cancelled'])->sum('total_amount');
+        $totalPaid   = (float) $client->reservations()
+            ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')
+            ->sum('reservation_payments.amount');
+        $creditBalance = max(0.0, $totalAmount - $totalPaid);
+
+        $creditReservations = (clone $rq)->whereIn('status', ['completed', 'active'])
+            ->selectRaw('reservations.id, reservation_number, total_amount, COALESCE(SUM(rp.amount),0) as paid_amount, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+            ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
+            ->groupBy('reservations.id', 'reservation_number', 'total_amount')
+            ->havingRaw('credit_amount > 0')
+            ->get();
+
+        $lastReservation = (clone $rq)->with('vehicle:id,brand,model,registration_number')->latest()->first();
+
+        return $this->success([
+            'client' => new ClientResource($client),
+            'reservations' => [
+                'total'     => (clone $rq)->count(),
+                'completed' => (clone $rq)->where('status', 'completed')->count(),
+                'active'    => (clone $rq)->whereIn('status', ['active', 'confirmed', 'pending'])->count(),
+                'cancelled' => (clone $rq)->where('status', 'cancelled')->count(),
+            ],
+            'financials' => [
+                'total_amount'    => $totalAmount,
+                'total_paid'      => $totalPaid,
+                'credit_balance'  => $creditBalance,
+            ],
+            'credit_reservations' => $creditReservations,
+            'last_reservation'    => $lastReservation,
+        ]);
+    }
 }
 

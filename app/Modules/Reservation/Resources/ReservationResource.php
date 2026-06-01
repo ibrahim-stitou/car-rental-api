@@ -11,6 +11,7 @@ class ReservationResource extends JsonResource
     {
         return [
             'id'                  => $this->id,
+            'reference'           => $this->reservation_number,
             'reservation_number'  => $this->reservation_number,
             'agency'              => $this->whenLoaded('agency', fn() => [
                 'id' => $this->agency->id, 'name' => $this->agency->name,
@@ -38,6 +39,7 @@ class ReservationResource extends JsonResource
             'total_amount'        => $this->total_amount,
             'deposit_amount'      => $this->deposit_amount,
             'deposit_paid'        => $this->deposit_paid,
+            'paid_amount'         => (float) $this->payments()->sum('amount'),
             'payment_status'      => $this->payment_status,
             'payment_method'      => $this->payment_method,
             'initial_mileage'     => $this->initial_mileage,

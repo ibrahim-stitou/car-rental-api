@@ -3,12 +3,14 @@
 namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
+use App\Models\Expense;
 use App\Modules\Agency\Requests\StoreAgencyRequest;
 use App\Modules\Agency\Requests\UpdateAgencyRequest;
 use App\Modules\Agency\Resources\AgencyResource;
 use App\Modules\Agency\Services\AgencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AgencyController extends BaseController
 {
@@ -204,6 +206,60 @@ class AgencyController extends BaseController
     {
         $agency = $this->service->restore($id);
         return $this->success(new AgencyResource($agency), 'Agency restored successfully');
+    }
+
+    public function statistics(string $id): JsonResponse
+    {
+        $agency = $this->service->find($id);
+
+        $vq = $agency->vehicles();
+        $rq = $agency->reservations();
+
+        $totalRevenue = (float) (clone $rq)->whereIn('status', ['completed'])
+            ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')
+            ->sum('reservation_payments.amount');
+
+        $creditReservations = (clone $rq)->whereIn('status', ['completed', 'active'])
+            ->selectRaw('reservations.id, reservation_number, total_amount, COALESCE(SUM(rp.amount),0) as paid_amount, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+            ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
+            ->groupBy('reservations.id', 'reservation_number', 'total_amount')
+            ->havingRaw('credit_amount > 0')
+            ->get();
+
+        $totalCredit = $creditReservations->sum('credit_amount');
+        $totalExpenses = (float) Expense::where('agency_id', $id)->sum('amount');
+
+        return $this->success([
+            'agency'  => new AgencyResource($agency),
+            'vehicles' => [
+                'total'          => (clone $vq)->count(),
+                'available'      => (clone $vq)->where('status', 'available')->count(),
+                'rented'         => (clone $vq)->where('status', 'rented')->count(),
+                'maintenance'    => (clone $vq)->where('status', 'maintenance')->count(),
+                'out_of_service' => (clone $vq)->where('status', 'out_of_service')->count(),
+            ],
+            'reservations' => [
+                'total'     => (clone $rq)->count(),
+                'pending'   => (clone $rq)->where('status', 'pending')->count(),
+                'confirmed' => (clone $rq)->where('status', 'confirmed')->count(),
+                'active'    => (clone $rq)->where('status', 'active')->count(),
+                'completed' => (clone $rq)->where('status', 'completed')->count(),
+                'cancelled' => (clone $rq)->where('status', 'cancelled')->count(),
+                'overdue'   => (clone $rq)->where('status', 'active')->where('return_date', '<', now())->count(),
+                'this_month' => (clone $rq)->whereMonth('reservations.created_at', now()->month)->whereYear('reservations.created_at', now()->year)->count(),
+            ],
+            'financials' => [
+                'total_revenue'  => $totalRevenue,
+                'total_expenses' => $totalExpenses,
+                'net_revenue'    => $totalRevenue - $totalExpenses,
+                'total_credit'   => (float) $totalCredit,
+                'credit_count'   => $creditReservations->count(),
+            ],
+            'clients' => [
+                'total'       => $agency->clients()->count(),
+                'blacklisted' => $agency->clients()->where('is_blacklisted', true)->count(),
+            ],
+        ]);
     }
 }
 

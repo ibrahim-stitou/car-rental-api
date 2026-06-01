@@ -18,6 +18,7 @@ Route::middleware('auth:api')->prefix('clients')->group(function () {
     Route::post('/{id}/documents',         [ClientController::class, 'uploadDocuments']);
     Route::delete('/{id}/media/{mediaId}', [ClientController::class, 'deleteMedia']);
     Route::get('/{id}/reservations',       [ClientController::class, 'reservations']);
+    Route::get('/{id}/statistics',         [ClientController::class, 'statistics']);
     Route::post('/{id}/restore',           [ClientController::class, 'restore']);
 });
 
