@@ -2,17 +2,23 @@
 
 namespace App\Models;
 
+use App\Core\Traits\HasUuid;
+use App\Core\Traits\HasMediaCollections;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\HasUuid;
+use OwenIt\Auditing\Contracts\Auditable;
+use OwenIt\Auditing\Auditable as AuditableTrait;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Expense extends Model
+class Expense extends Model implements HasMedia, Auditable
 {
-    use HasUuid, SoftDeletes;
+    use HasUuid, SoftDeletes, InteractsWithMedia, HasMediaCollections, AuditableTrait;
 
     protected $fillable = [
         'agency_id', 'vehicle_id', 'recorded_by', 'title', 'category',
-        'amount', 'expense_date', 'payment_method', 'reference', 'notes',
+        'amount', 'expense_date', 'payment_method', 'reference',
+        'notes', 'agent_notes', 'description',
     ];
 
     protected $casts = [
@@ -33,5 +39,12 @@ class Expense extends Model
     public function recorder()
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('receipts')
+            ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png']);
+        $this->addMediaCollection('documents');
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Modules\Client\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
+use App\Models\Claim;
 use App\Modules\Client\Requests\StoreClientRequest;
 use App\Modules\Client\Requests\UpdateClientRequest;
 use App\Modules\Client\Resources\ClientResource;
@@ -270,6 +271,8 @@ class ClientController extends BaseController
 
         $lastReservation = (clone $rq)->with('vehicle:id,brand,model,registration_number')->latest()->first();
 
+        $claimsCount = \App\Models\Claim::where('client_id', $id)->count();
+
         return $this->success([
             'client' => new ClientResource($client),
             'reservations' => [
@@ -285,6 +288,7 @@ class ClientController extends BaseController
             ],
             'credit_reservations' => $creditReservations,
             'last_reservation'    => $lastReservation,
+            'claims_count'        => $claimsCount,
         ]);
     }
 }

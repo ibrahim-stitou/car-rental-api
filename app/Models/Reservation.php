@@ -22,7 +22,8 @@ class Reservation extends Model implements HasMedia, Auditable
     use HasFactory, HasUuid, SoftDeletes, InteractsWithMedia, HasMediaCollections, AuditableTrait;
 
     protected $fillable = [
-        'reservation_number', 'agency_id', 'vehicle_id', 'client_id', 'created_by',
+        'reservation_number', 'agency_id', 'vehicle_id', 'client_id', 'created_by', 'validated_by',
+        'second_driver_id', 'second_driver_name', 'second_driver_license', 'second_driver_phone',
         'pickup_date', 'return_date', 'actual_return_date',
         'pickup_location', 'return_location', 'status',
         'daily_rate', 'total_days', 'subtotal',
@@ -31,7 +32,7 @@ class Reservation extends Model implements HasMedia, Auditable
         'payment_status', 'payment_method',
         'initial_mileage', 'final_mileage',
         'fuel_level_pickup', 'fuel_level_return',
-        'notes', 'cancellation_reason', 'cancelled_at',
+        'notes', 'agent_notes', 'cancellation_reason', 'cancelled_at',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -103,7 +104,9 @@ class Reservation extends Model implements HasMedia, Auditable
     public function agency(): BelongsTo { return $this->belongsTo(Agency::class); }
     public function vehicle(): BelongsTo { return $this->belongsTo(Vehicle::class); }
     public function client(): BelongsTo { return $this->belongsTo(Client::class); }
+    public function secondDriver(): BelongsTo { return $this->belongsTo(Client::class, 'second_driver_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function validator(): BelongsTo { return $this->belongsTo(User::class, 'validated_by'); }
     public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany { return $this->hasMany(ReservationPayment::class); }
 
     // Media

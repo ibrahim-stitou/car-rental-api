@@ -178,5 +178,18 @@ class TechnicalInspectionController extends BaseController
         $inspection->media()->findOrFail($mediaId)->delete();
         return $this->success(null, 'Media deleted');
     }
+
+    public function getMedia(string $id): JsonResponse
+    {
+        return $this->success($this->service->find($id)->getAllMediaFormatted());
+    }
+
+    public function uploadDocuments(\Illuminate\Http\Request $request, string $id): JsonResponse
+    {
+        $request->validate(['documents' => 'required|array', 'documents.*' => 'file|max:10240']);
+        $inspection = $this->service->find($id);
+        $inspection->uploadMultipleMedia($request->file('documents'), 'documents');
+        return $this->success($inspection->getMediaByCollection('documents'), 'Documents téléversés');
+    }
 }
 

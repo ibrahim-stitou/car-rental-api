@@ -21,9 +21,11 @@ class Maintenance extends Model implements HasMedia, Auditable
     use HasFactory, HasUuid, SoftDeletes, InteractsWithMedia, HasMediaCollections, AuditableTrait;
 
     protected $fillable = [
-        'vehicle_id', 'type', 'description', 'maintenance_date', 'completion_date',
+        'vehicle_id', 'title', 'type', 'sub_type', 'description', 'agent_notes',
+        'maintenance_date', 'completion_date',
         'mileage_at_service', 'next_service_mileage', 'next_service_date',
-        'cost', 'service_provider', 'status', 'priority', 'created_by',
+        'next_oil_change_mileage', 'tire_position',
+        'cost', 'actual_cost', 'service_provider', 'status', 'priority', 'created_by',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -31,12 +33,14 @@ class Maintenance extends Model implements HasMedia, Auditable
     protected function casts(): array
     {
         return [
-            'maintenance_date'    => 'date',
-            'completion_date'     => 'date',
-            'next_service_date'   => 'date',
-            'cost'                => 'decimal:2',
-            'mileage_at_service'  => 'integer',
-            'next_service_mileage'=> 'integer',
+            'maintenance_date'       => 'date',
+            'completion_date'        => 'date',
+            'next_service_date'      => 'date',
+            'cost'                   => 'decimal:2',
+            'actual_cost'            => 'decimal:2',
+            'mileage_at_service'     => 'integer',
+            'next_service_mileage'   => 'integer',
+            'next_oil_change_mileage'=> 'integer',
         ];
     }
 
@@ -60,15 +64,20 @@ class Maintenance extends Model implements HasMedia, Auditable
     // Relations
     public function vehicle(): BelongsTo { return $this->belongsTo(Vehicle::class); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
+    public function claim(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Claim::class);
+    }
 
     // Media
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('invoices')
-            ->acceptsMimeTypes(['application/pdf']);
+            ->acceptsMimeTypes(['application/pdf', 'image/jpeg', 'image/png']);
         $this->addMediaCollection('photos_before')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
         $this->addMediaCollection('photos_after')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+        $this->addMediaCollection('documents');
     }
 }

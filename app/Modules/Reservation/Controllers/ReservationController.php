@@ -119,6 +119,8 @@ class ReservationController extends BaseController
     public function confirm(string $id): JsonResponse
     {
         $reservation = $this->service->confirm($id);
+        // Store who validated
+        $reservation->update(['validated_by' => auth()->id()]);
         return $this->success(new ReservationResource($reservation), 'Reservation confirmed');
     }
 
@@ -352,6 +354,106 @@ class ReservationController extends BaseController
     {
         $reservation = $this->service->restore($id);
         return $this->success(new ReservationResource($reservation), 'Reservation restored');
+    }
+
+    /**
+     * Check if a vehicle has conflicting reservations in the given period.
+     * Returns any non-completed reservation overlapping the interval.
+     */
+    public function checkConflict(Request $request): JsonResponse
+    {
+        $request->validate([
+            'vehicle_id'  => 'required|uuid',
+            'pickup_date' => 'required|date',
+            'return_date' => 'required|date|after:pickup_date',
+            'exclude_id'  => 'nullable|uuid',
+        ]);
+
+        $conflict = \App\Models\Reservation::query()
+            ->where('vehicle_id', $request->vehicle_id)
+            ->whereNotIn('status', ['cancelled', 'no_show', 'completed'])
+            ->where(function ($q) use ($request) {
+                $q->where(function ($qq) use ($request) {
+                    $qq->where('pickup_date', '<', $request->return_date)
+                       ->where('return_date', '>', $request->pickup_date);
+                });
+            })
+            ->when($request->exclude_id, fn($q) => $q->where('id', '!=', $request->exclude_id))
+            ->with(['client:id,first_name,last_name,phone', 'vehicle:id,brand,model,registration_number'])
+            ->first();
+
+        if (!$conflict) {
+            return $this->success(['has_conflict' => false]);
+        }
+
+        return $this->success([
+            'has_conflict' => true,
+            'conflict'     => [
+                'id'                 => $conflict->id,
+                'reservation_number' => $conflict->reservation_number,
+                'status'             => $conflict->status,
+                'pickup_date'        => $conflict->pickup_date?->toISOString(),
+                'return_date'        => $conflict->return_date?->toISOString(),
+                'client'             => $conflict->client ? [
+                    'full_name' => $conflict->client->full_name,
+                    'phone'     => $conflict->client->phone,
+                ] : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Extend a reservation — creates a new contract (if active) or updates the end date (if not yet active).
+     */
+    public function extend(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'new_return_date' => 'required|date',
+            'additional_fees' => 'nullable|numeric|min:0',
+            'notes'           => 'nullable|string',
+        ]);
+
+        $reservation = $this->service->find($id);
+
+        if (!in_array($reservation->status, ['pending', 'confirmed', 'active'])) {
+            return $this->error('Cette réservation ne peut pas être prolongée (statut: ' . $reservation->status . ')', 422);
+        }
+
+        $newReturnDate = \Carbon\Carbon::parse($data['new_return_date']);
+
+        if ($newReturnDate->lte($reservation->return_date)) {
+            return $this->error('La nouvelle date de retour doit être postérieure à la date actuelle.', 422);
+        }
+
+        // Conflict check for extension
+        $conflict = \App\Models\Reservation::query()
+            ->where('vehicle_id', $reservation->vehicle_id)
+            ->where('id', '!=', $reservation->id)
+            ->whereNotIn('status', ['cancelled', 'no_show', 'completed'])
+            ->where('pickup_date', '<', $newReturnDate)
+            ->where('return_date', '>', $reservation->return_date)
+            ->first();
+
+        if ($conflict) {
+            return $this->error(
+                "Conflit détecté avec la réservation {$conflict->reservation_number} du " .
+                $conflict->pickup_date->format('d/m/Y') . " au " .
+                $conflict->return_date->format('d/m/Y'), 422
+            );
+        }
+
+        // Recalculate
+        $reservation->return_date = $newReturnDate;
+        if (!empty($data['additional_fees'])) {
+            $reservation->additional_fees = ($reservation->additional_fees ?? 0) + $data['additional_fees'];
+        }
+        if (!empty($data['notes'])) {
+            $reservation->notes = ($reservation->notes ? $reservation->notes . "\n" : '') . '[Prolongation] ' . $data['notes'];
+        }
+        $reservation->calculateTotal();
+        $reservation->save();
+
+        return $this->success(new ReservationResource($reservation->fresh(['vehicle', 'client', 'agency'])), 'Réservation prolongée avec succès');
     }
 
     public function credits(Request $request): JsonResponse

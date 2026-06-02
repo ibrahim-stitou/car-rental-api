@@ -11,6 +11,7 @@ class VehicleResource extends JsonResource
     {
         return [
             'id'                  => $this->id,
+            'agency_id'           => $this->agency_id,
             'agency'              => $this->whenLoaded('agency', fn() => [
                 'id'   => $this->agency->id,
                 'name' => $this->agency->name,
@@ -32,7 +33,9 @@ class VehicleResource extends JsonResource
             'status'              => $this->status,
             'is_active'                => $this->is_active,
             'is_available'             => $this->is_available,
+            'has_adblue'               => (bool) $this->has_adblue,
             'notes'                    => $this->notes,
+            'description'              => $this->description,
             'show_on_website'          => $this->show_on_website,
             'website_description'      => $this->website_description,
             'website_price_override'   => $this->website_price_override,

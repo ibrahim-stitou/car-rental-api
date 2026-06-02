@@ -14,6 +14,7 @@ Route::middleware('auth:api')->prefix('insurances')->group(function () {
     Route::post('/{id}/policy-document',   [InsuranceController::class, 'uploadPolicyDocument']);
     Route::post('/{id}/green-card',        [InsuranceController::class, 'uploadGreenCard']);
     Route::post('/{id}/attachments',       [InsuranceController::class, 'uploadAttachments']);
+    Route::post('/{id}/documents',         [InsuranceController::class, 'uploadDocuments']);
     Route::delete('/{id}/media/{mediaId}', [InsuranceController::class, 'deleteMedia']);
     Route::get('/{id}/media',              [InsuranceController::class, 'getMedia']);
 });

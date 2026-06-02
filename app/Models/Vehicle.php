@@ -25,7 +25,7 @@ class Vehicle extends Model implements HasMedia, Auditable
         'agency_id', 'brand', 'model', 'year', 'registration_number',
         'vin', 'color', 'category', 'fuel_type', 'transmission',
         'seats', 'daily_rate', 'deposit_amount', 'mileage',
-        'status', 'is_active', 'notes',
+        'status', 'is_active', 'notes', 'has_adblue', 'description',
         'show_on_website', 'website_description', 'website_price_override',
     ];
 
@@ -40,6 +40,7 @@ class Vehicle extends Model implements HasMedia, Auditable
             'deposit_amount' => 'decimal:2',
             'mileage'        => 'integer',
             'is_active'               => 'boolean',
+            'has_adblue'              => 'boolean',
             'show_on_website'         => 'boolean',
             'website_price_override'  => 'decimal:2',
         ];
@@ -63,6 +64,7 @@ class Vehicle extends Model implements HasMedia, Auditable
     public function insurances(): HasMany { return $this->hasMany(Insurance::class); }
     public function reservations(): HasMany { return $this->hasMany(Reservation::class); }
     public function maintenances(): HasMany { return $this->hasMany(Maintenance::class); }
+    public function claims(): HasMany { return $this->hasMany(Claim::class); }
 
     // Media
     public function registerMediaCollections(): void

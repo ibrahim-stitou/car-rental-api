@@ -13,6 +13,8 @@ Route::middleware('auth:api')->prefix('technical-inspections')->group(function (
     Route::delete('/{id}',                 [TechnicalInspectionController::class, 'destroy']);
     Route::post('/{id}/report',            [TechnicalInspectionController::class, 'uploadReport']);
     Route::post('/{id}/photos',            [TechnicalInspectionController::class, 'uploadPhotos']);
+    Route::post('/{id}/documents',         [TechnicalInspectionController::class, 'uploadDocuments']);
+    Route::get('/{id}/media',              [TechnicalInspectionController::class, 'getMedia']);
     Route::delete('/{id}/media/{mediaId}', [TechnicalInspectionController::class, 'deleteMedia']);
 });
 

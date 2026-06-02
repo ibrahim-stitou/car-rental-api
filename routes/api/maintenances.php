@@ -16,6 +16,9 @@ Route::middleware('auth:api')->prefix('maintenances')->group(function () {
     Route::post('/{id}/invoices',          [MaintenanceController::class, 'uploadInvoices']);
     Route::post('/{id}/photos-before',     [MaintenanceController::class, 'uploadPhotosBefore']);
     Route::post('/{id}/photos-after',      [MaintenanceController::class, 'uploadPhotosAfter']);
+    Route::post('/{id}/documents',         [MaintenanceController::class, 'uploadDocuments']);
+    Route::get('/{id}/media',              [MaintenanceController::class, 'getMedia']);
     Route::delete('/{id}/media/{mediaId}', [MaintenanceController::class, 'deleteMedia']);
+    Route::get('/oil-change/alerts',       [MaintenanceController::class, 'oilChangeAlerts']);
 });
 

@@ -23,7 +23,7 @@ class TechnicalInspection extends Model implements HasMedia, Auditable
     protected $fillable = [
         'vehicle_id', 'inspection_date', 'expiry_date', 'result',
         'inspection_center', 'inspector_name', 'observations',
-        'cost', 'next_inspection_date', 'created_by',
+        'cost', 'next_inspection_date', 'agent_notes', 'created_by',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -65,5 +65,6 @@ class TechnicalInspection extends Model implements HasMedia, Auditable
             ->acceptsMimeTypes(['application/pdf']);
         $this->addMediaCollection('photos')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+        $this->addMediaCollection('documents');
     }
 }

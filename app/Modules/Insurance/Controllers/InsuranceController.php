@@ -193,4 +193,12 @@ class InsuranceController extends BaseController
     {
         return $this->success($this->service->find($id)->getAllMediaFormatted());
     }
+
+    public function uploadDocuments(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['documents' => 'required|array', 'documents.*' => 'file|max:10240']);
+        $insurance = $this->service->find($id);
+        $insurance->uploadMultipleMedia($request->file('documents'), 'documents');
+        return $this->success($insurance->getMediaByCollection('documents'), 'Documents téléversés');
+    }
 }

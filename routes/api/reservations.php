@@ -12,6 +12,7 @@ Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::get('/overdue',                 [ReservationController::class, 'overdue']);
     Route::get('/credits',                 [ReservationController::class, 'credits']);
     Route::get('/statistics',              [ReservationController::class, 'statistics']);
+    Route::get('/check-conflict',          [ReservationController::class, 'checkConflict']);
     Route::get('/{id}',                    [ReservationController::class, 'show']);
     Route::put('/{id}',                    [ReservationController::class, 'update'])->middleware('permission:edit-reservation');
     Route::delete('/{id}',                 [ReservationController::class, 'destroy'])->middleware('permission:delete-reservation');
@@ -27,5 +28,6 @@ Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::delete('/{id}/media/{mediaId}', [ReservationController::class, 'deleteMedia']);
     Route::get('/{id}/invoice',            [ReservationController::class, 'generateInvoice']);
     Route::post('/{id}/restore',           [ReservationController::class, 'restore']);
+    Route::patch('/{id}/extend',           [ReservationController::class, 'extend']);
 });
 

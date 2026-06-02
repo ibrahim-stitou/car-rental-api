@@ -179,5 +179,18 @@ class VignetteController extends BaseController
         $this->service->find($id)->media()->findOrFail($mediaId)->delete();
         return $this->success(null, 'Media deleted');
     }
+
+    public function getMedia(string $id): JsonResponse
+    {
+        return $this->success($this->service->find($id)->getAllMediaFormatted());
+    }
+
+    public function uploadDocuments(\Illuminate\Http\Request $request, string $id): JsonResponse
+    {
+        $request->validate(['documents' => 'required|array', 'documents.*' => 'file|max:10240']);
+        $vignette = $this->service->find($id);
+        $vignette->uploadMultipleMedia($request->file('documents'), 'documents');
+        return $this->success($vignette->getMediaByCollection('documents'), 'Documents téléversés');
+    }
 }
 

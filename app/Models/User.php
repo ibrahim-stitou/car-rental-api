@@ -28,6 +28,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, C
     protected $fillable = [
         'agency_id', 'first_name', 'last_name', 'email',
         'password', 'phone', 'is_active', 'last_login_at',
+        'signature_path', 'stamp_path',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -60,6 +61,17 @@ class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, C
         $this->addMediaCollection('avatar')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+        $this->addMediaCollection('signature')
+            ->singleFile()
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+        $this->addMediaCollection('stamp')
+            ->singleFile()
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+    }
+
+    public function hasSignature(): bool
+    {
+        return $this->getFirstMediaUrl('signature') !== '';
     }
 
     public function registerMediaConversions(?Media $media = null): void

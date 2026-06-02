@@ -21,10 +21,10 @@ class Insurance extends Model implements HasMedia, Auditable
     use HasFactory, HasUuid, SoftDeletes, InteractsWithMedia, HasMediaCollections, AuditableTrait;
 
     protected $fillable = [
-        'vehicle_id', 'insurance_company', 'policy_number', 'type',
+        'vehicle_id', 'insurance_company', 'policy_number', 'type', 'insurance_type',
         'start_date', 'end_date', 'premium_amount', 'deductible_amount',
         'coverage_details', 'is_active', 'agent_name', 'agent_phone',
-        'notes', 'created_by',
+        'notes', 'agent_notes', 'created_by',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -68,5 +68,6 @@ class Insurance extends Model implements HasMedia, Auditable
             ->acceptsMimeTypes(['application/pdf']);
         $this->addMediaCollection('green_card')->singleFile();
         $this->addMediaCollection('attachments');
+        $this->addMediaCollection('documents');
     }
 }

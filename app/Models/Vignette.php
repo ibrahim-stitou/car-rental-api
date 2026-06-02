@@ -22,7 +22,8 @@ class Vignette extends Model implements HasMedia, Auditable
 
     protected $fillable = [
         'vehicle_id', 'year', 'issue_date', 'expiry_date', 'amount',
-        'payment_method', 'payment_reference', 'is_paid', 'paid_at', 'created_by',
+        'payment_method', 'payment_reference', 'is_paid', 'paid_at',
+        'agent_notes', 'created_by',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -64,5 +65,6 @@ class Vignette extends Model implements HasMedia, Auditable
     {
         $this->addMediaCollection('vignette_document')->singleFile();
         $this->addMediaCollection('payment_proof')->singleFile();
+        $this->addMediaCollection('documents');
     }
 }

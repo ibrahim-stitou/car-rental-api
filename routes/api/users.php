@@ -20,9 +20,13 @@ Route::middleware(['auth:api', 'role:super-admin|admin'])->prefix('users')->grou
 });
 
 Route::middleware('auth:api')->prefix('profile')->group(function () {
-    Route::get('/',         [ProfileController::class, 'show']);
-    Route::put('/',         [ProfileController::class, 'update']);
-    Route::put('/password', [ProfileController::class, 'changePassword']);
-    Route::post('/avatar',  [ProfileController::class, 'uploadAvatar']);
+    Route::get('/',              [ProfileController::class, 'show']);
+    Route::put('/',              [ProfileController::class, 'update']);
+    Route::put('/password',      [ProfileController::class, 'changePassword']);
+    Route::post('/avatar',       [ProfileController::class, 'uploadAvatar']);
+    Route::post('/signature',    [ProfileController::class, 'uploadSignature']);
+    Route::post('/stamp',        [ProfileController::class, 'uploadStamp']);
+    Route::delete('/signature',  [ProfileController::class, 'deleteSignature']);
+    Route::delete('/stamp',      [ProfileController::class, 'deleteStamp']);
 });
 

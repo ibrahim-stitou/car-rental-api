@@ -81,13 +81,25 @@ class DashboardController extends BaseController
         ];
     }
 
-    private function recentReservations(?string $agencyId): mixed
+    private function recentReservations(?string $agencyId): array
     {
         return Reservation::with(['vehicle:id,brand,model,registration_number', 'client:id,first_name,last_name'])
             ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
             ->orderByDesc('created_at')
             ->limit(8)
-            ->get(['id', 'reservation_number', 'status', 'pickup_date', 'return_date', 'total_amount', 'vehicle_id', 'client_id']);
+            ->get(['id', 'reservation_number', 'status', 'pickup_date', 'return_date', 'total_amount', 'vehicle_id', 'client_id'])
+            ->map(fn($r) => [
+                'id'                 => $r->id,
+                'reservation_number' => $r->reservation_number,
+                'status'             => $r->status,
+                'pickup_date'        => $r->pickup_date?->toISOString(),
+                'return_date'        => $r->return_date?->toISOString(),
+                'total_amount'       => (float) $r->total_amount,
+                'vehicle'            => $r->vehicle ? ['id' => $r->vehicle->id, 'brand' => $r->vehicle->brand, 'model' => $r->vehicle->model] : null,
+                'client'             => $r->client ? ['id' => $r->client->id, 'first_name' => $r->client->first_name, 'last_name' => $r->client->last_name] : null,
+            ])
+            ->values()
+            ->toArray();
     }
 
     private function billingStats(?string $agencyId): array

@@ -203,10 +203,79 @@ class MaintenanceController extends BaseController
      *   @OA\Response(response=200, description="Deleted")
      * )
      */
+    public function uploadDocuments(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['documents' => 'required|array', 'documents.*' => 'file|max:10240']);
+        $maintenance = $this->service->find($id);
+        $maintenance->uploadMultipleMedia($request->file('documents'), 'documents');
+        return $this->success($maintenance->getMediaByCollection('documents'), 'Documents téléversés');
+    }
+
+    public function getMedia(string $id): JsonResponse
+    {
+        $maintenance = $this->service->find($id);
+        return $this->success($maintenance->getAllMediaFormatted());
+    }
+
     public function deleteMedia(string $id, int $mediaId): JsonResponse
     {
         $this->service->find($id)->media()->findOrFail($mediaId)->delete();
         return $this->success(null, 'Media deleted');
+    }
+
+    public function oilChangeAlerts(Request $request): JsonResponse
+    {
+        $agencyId = $request->query('agency_id');
+
+        $query = \App\Models\Maintenance::with('vehicle:id,brand,model,registration_number,mileage')
+            ->where('sub_type', 'oil_change')
+            ->whereNotNull('next_oil_change_mileage')
+            ->whereIn('status', ['completed']);
+
+        if ($agencyId) {
+            $query->whereHas('vehicle', fn($q) => $q->where('agency_id', $agencyId));
+        }
+
+        $oilChanges = $query->get();
+
+        $alerts = [];
+        foreach ($oilChanges as $maintenance) {
+            $vehicle = $maintenance->vehicle;
+            if (!$vehicle) continue;
+
+            $currentMileage  = $vehicle->mileage;
+            $nextOilMileage  = $maintenance->next_oil_change_mileage;
+            $remaining       = $nextOilMileage - $currentMileage;
+
+            $level = match (true) {
+                $remaining <= 0    => 'overdue',
+                $remaining <= 100  => 'critical',
+                $remaining <= 500  => 'warning',
+                default            => null,
+            };
+
+            if ($level !== null) {
+                $alerts[] = [
+                    'vehicle_id'           => $vehicle->id,
+                    'vehicle_name'         => "{$vehicle->brand} {$vehicle->model}",
+                    'registration_number'  => $vehicle->registration_number,
+                    'current_mileage'      => $currentMileage,
+                    'next_oil_change_mileage' => $nextOilMileage,
+                    'remaining_km'         => $remaining,
+                    'level'                => $level,
+                    'maintenance_id'       => $maintenance->id,
+                ];
+            }
+        }
+
+        return $this->success([
+            'alerts' => $alerts,
+            'counts' => [
+                'overdue'  => count(array_filter($alerts, fn($a) => $a['level'] === 'overdue')),
+                'critical' => count(array_filter($alerts, fn($a) => $a['level'] === 'critical')),
+                'warning'  => count(array_filter($alerts, fn($a) => $a['level'] === 'warning')),
+            ],
+        ]);
     }
 }
 

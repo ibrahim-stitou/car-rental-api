@@ -89,6 +89,48 @@ class ExpenseController extends BaseController
         return $this->success(null, 'Dépense supprimée');
     }
 
+    public function uploadDocuments(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'documents'   => 'required|array',
+            'documents.*' => 'file|max:10240',
+        ]);
+
+        $expense = Expense::findOrFail($id);
+
+        if (!$expense instanceof \Spatie\MediaLibrary\HasMedia) {
+            return $this->error('Ce modèle ne supporte pas les médias', 500);
+        }
+
+        $expense->uploadMultipleMedia($request->file('documents'), 'documents');
+        return $this->success($expense->getMediaByCollection('documents'), 'Documents téléversés');
+    }
+
+    public function uploadReceipts(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'receipts'   => 'required|array',
+            'receipts.*' => 'file|mimes:jpeg,png,pdf|max:5120',
+        ]);
+
+        $expense = Expense::findOrFail($id);
+        $expense->uploadMultipleMedia($request->file('receipts'), 'receipts');
+        return $this->success($expense->getMediaByCollection('receipts'), 'Justificatifs téléversés');
+    }
+
+    public function getMedia(string $id): JsonResponse
+    {
+        $expense = Expense::findOrFail($id);
+        return $this->success($expense->getAllMediaFormatted());
+    }
+
+    public function deleteMedia(string $id, int $mediaId): JsonResponse
+    {
+        $expense = Expense::findOrFail($id);
+        $expense->media()->findOrFail($mediaId)->delete();
+        return $this->success(null, 'Média supprimé');
+    }
+
     public function statistics(Request $request): JsonResponse
     {
         $query = Expense::query()

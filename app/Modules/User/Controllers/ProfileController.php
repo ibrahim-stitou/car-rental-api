@@ -84,5 +84,39 @@ class ProfileController extends BaseController
             'thumb' => $user->getFirstMediaUrl('avatar', 'thumb'),
         ], 'Avatar uploaded');
     }
+
+    public function uploadSignature(Request $request): JsonResponse
+    {
+        $request->validate(['signature' => 'required|image|mimes:jpeg,png,webp|max:2048']);
+        $user = auth('api')->user();
+        $user->clearMediaCollection('signature');
+        $user->addMedia($request->file('signature'))->toMediaCollection('signature');
+        return $this->success([
+            'url' => $user->getFirstMediaUrl('signature'),
+        ], 'Signature enregistrée');
+    }
+
+    public function uploadStamp(Request $request): JsonResponse
+    {
+        $request->validate(['stamp' => 'required|image|mimes:jpeg,png,webp|max:2048']);
+        $user = auth('api')->user();
+        $user->clearMediaCollection('stamp');
+        $user->addMedia($request->file('stamp'))->toMediaCollection('stamp');
+        return $this->success([
+            'url' => $user->getFirstMediaUrl('stamp'),
+        ], 'Cachet enregistré');
+    }
+
+    public function deleteSignature(): JsonResponse
+    {
+        auth('api')->user()->clearMediaCollection('signature');
+        return $this->success(null, 'Signature supprimée');
+    }
+
+    public function deleteStamp(): JsonResponse
+    {
+        auth('api')->user()->clearMediaCollection('stamp');
+        return $this->success(null, 'Cachet supprimé');
+    }
 }
 

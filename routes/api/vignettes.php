@@ -14,6 +14,8 @@ Route::middleware('auth:api')->prefix('vignettes')->group(function () {
     Route::patch('/{id}/mark-paid',        [VignetteController::class, 'markAsPaid']);
     Route::post('/{id}/document',          [VignetteController::class, 'uploadDocument']);
     Route::post('/{id}/payment-proof',     [VignetteController::class, 'uploadPaymentProof']);
+    Route::post('/{id}/documents',         [VignetteController::class, 'uploadDocuments']);
+    Route::get('/{id}/media',              [VignetteController::class, 'getMedia']);
     Route::delete('/{id}/media/{mediaId}', [VignetteController::class, 'deleteMedia']);
 });
 

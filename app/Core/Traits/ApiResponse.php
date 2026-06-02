@@ -32,12 +32,16 @@ trait ApiResponse
         return response()->json($response, $code);
     }
 
-    protected function paginated($paginator, string $resourceClass): JsonResponse
+    protected function paginated($paginator, ?string $resourceClass): JsonResponse
     {
+        $items = $resourceClass !== null
+            ? $resourceClass::collection($paginator->items())
+            : $paginator->items();
+
         return response()->json([
             'success' => true,
             'message' => 'Success',
-            'data'    => $resourceClass::collection($paginator->items()),
+            'data'    => $items,
             'meta'    => [
                 'current_page' => $paginator->currentPage(),
                 'last_page'    => $paginator->lastPage(),

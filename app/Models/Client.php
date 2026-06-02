@@ -26,7 +26,7 @@ class Client extends Model implements HasMedia, Auditable
         'date_of_birth', 'nationality', 'id_type', 'id_number', 'id_expiry_date',
         'driving_license_number', 'driving_license_category', 'driving_license_expiry',
         'address', 'city', 'country', 'is_blacklisted', 'blacklist_reason',
-        'notes', 'created_by',
+        'notes', 'agent_notes', 'created_by',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -62,6 +62,7 @@ class Client extends Model implements HasMedia, Auditable
     public function agency(): BelongsTo { return $this->belongsTo(Agency::class); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function reservations(): HasMany { return $this->hasMany(Reservation::class); }
+    public function claims(): HasMany { return $this->hasMany(Claim::class); }
 
     // Media
     public function registerMediaCollections(): void
