@@ -2,6 +2,7 @@
 
 namespace App\Modules\Billing\Resources;
 
+use App\Modules\Billing\Resources\BillingDocumentItemResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -11,6 +12,7 @@ class BillingDocumentResource extends JsonResource
     {
         return [
             'id'                     => $this->id,
+            'reference'              => $this->document_number,
             'document_number'        => $this->document_number,
             'type'                   => $this->type,
             'type_name'              => $this->type_name,
@@ -31,6 +33,7 @@ class BillingDocumentResource extends JsonResource
             'client_address'         => $this->client_address,
             'client_phone'           => $this->client_phone,
             'client_email'           => $this->client_email,
+            'client_ice'             => $this->client_ice,
             'issue_date'             => $this->issue_date?->format('Y-m-d'),
             'due_date'               => $this->due_date?->format('Y-m-d'),
             'delivery_date'          => $this->delivery_date?->format('Y-m-d'),

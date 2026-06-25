@@ -8,22 +8,35 @@ class StoreClientRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('id_type')) {
+            $map = [
+                'CIN'              => 'cin',
+                'Passport'         => 'passport',
+                'Residence Permit' => 'residence_permit',
+            ];
+            $normalized = $map[$this->id_type] ?? strtolower(str_replace(' ', '_', $this->id_type));
+            $this->merge(['id_type' => $normalized]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'agency_id'                => 'required|uuid|exists:agencies,id',
             'first_name'               => 'required|string|max:255',
             'last_name'                => 'required|string|max:255',
-            'email'                    => 'required|email|unique:clients,email',
+            'email'                    => 'nullable|email|unique:clients,email',
             'phone'                    => 'required|string|max:20',
-            'date_of_birth'            => 'required|date|before:-18 years',
+            'date_of_birth'            => 'nullable|date|before:-18 years',
             'nationality'              => 'nullable|string|max:100',
-            'id_type'                  => 'required|in:cin,passport,residence_permit',
-            'id_number'                => 'required|string|max:50',
-            'id_expiry_date'           => 'required|date|after:today',
-            'driving_license_number'   => 'required|string|max:50',
+            'id_type'                  => 'nullable|in:cin,passport,residence_permit',
+            'id_number'                => 'nullable|string|max:50',
+            'id_expiry_date'           => 'nullable|date',
+            'driving_license_number'   => 'nullable|string|max:50',
             'driving_license_category' => 'nullable|string|max:10',
-            'driving_license_expiry'   => 'required|date|after:today',
+            'driving_license_expiry'   => 'nullable|date',
             'address'                  => 'nullable|string',
             'city'                     => 'nullable|string|max:100',
             'country'                  => 'nullable|string|max:100',

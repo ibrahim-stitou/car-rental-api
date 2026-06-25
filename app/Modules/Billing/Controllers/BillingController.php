@@ -233,6 +233,21 @@ class BillingController extends BaseController
         return $this->success(null, 'Média supprimé');
     }
 
+    public function unapprove(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'reason' => 'required|string|min:5|max:500',
+        ]);
+
+        $document = $this->service->unapprove($id, $request->reason);
+        return $this->success(new BillingDocumentResource($document), 'Document dévalidé');
+    }
+
+    public function history(string $id): JsonResponse
+    {
+        return $this->success($this->service->history($id));
+    }
+
     public function restore(string $id): JsonResponse
     {
         $document = $this->service->restore($id);

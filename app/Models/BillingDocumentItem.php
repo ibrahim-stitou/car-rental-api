@@ -12,7 +12,7 @@ class BillingDocumentItem extends Model
     use HasFactory, HasUuid;
 
     protected $fillable = [
-        'billing_document_id', 'description', 'quantity', 'unit_price', 'total_price', 'notes',
+        'billing_document_id', 'description', 'quantity', 'unit_price', 'total_price', 'tax_rate', 'notes',
     ];
 
     protected function casts(): array
@@ -21,6 +21,7 @@ class BillingDocumentItem extends Model
             'quantity'    => 'integer',
             'unit_price'  => 'decimal:2',
             'total_price' => 'decimal:2',
+            'tax_rate'    => 'decimal:2',
         ];
     }
 

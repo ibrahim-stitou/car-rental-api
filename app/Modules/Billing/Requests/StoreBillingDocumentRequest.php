@@ -16,6 +16,7 @@ class StoreBillingDocumentRequest extends FormRequest
             'reservation_id'           => 'nullable|uuid|exists:reservations,id',
             'client_id'                => 'nullable|uuid|exists:clients,id',
             'client_name'              => 'required|string|max:255',
+            'client_ice'               => 'nullable|string|max:30',
             'client_address'           => 'nullable|string',
             'client_phone'             => 'nullable|string|max:20',
             'client_email'             => 'nullable|email',
@@ -31,8 +32,8 @@ class StoreBillingDocumentRequest extends FormRequest
             'items.*.description'      => 'required|string',
             'items.*.quantity'         => 'required|integer|min:1',
             'items.*.unit_price'       => 'required|numeric|min:0',
+            'items.*.tax_rate'         => 'nullable|numeric|min:0|max:100',
             'items.*.notes'            => 'nullable|string',
         ];
     }
 }
-

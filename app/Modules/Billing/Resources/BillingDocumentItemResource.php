@@ -15,6 +15,7 @@ class BillingDocumentItemResource extends JsonResource
             'quantity'    => $this->quantity,
             'unit_price'  => $this->unit_price,
             'total_price' => $this->total_price,
+            'tax_rate'    => $this->tax_rate,
             'notes'       => $this->notes,
         ];
     }

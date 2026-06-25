@@ -52,11 +52,15 @@ class BillingService
             $document = $this->repository->create($data);
 
             foreach ($items as $itemData) {
+                $qty   = (int)   ($itemData['quantity']  ?? 1);
+                $price = (float) ($itemData['unit_price'] ?? 0);
                 BillingDocumentItem::create([
                     'billing_document_id' => $document->id,
                     'description'         => $itemData['description'],
-                    'quantity'            => $itemData['quantity'] ?? 1,
-                    'unit_price'          => $itemData['unit_price'],
+                    'quantity'            => $qty,
+                    'unit_price'          => $price,
+                    'total_price'         => $qty * $price,
+                    'tax_rate'            => $itemData['tax_rate'] ?? 0,
                     'notes'               => $itemData['notes'] ?? null,
                 ]);
             }
@@ -77,6 +81,10 @@ class BillingService
         return DB::transaction(function () use ($id, $data) {
             $document = $this->repository->findByIdOrFail($id);
 
+            if ($document->status !== 'draft') {
+                abort(422, 'Seuls les documents en brouillon peuvent être modifiés.');
+            }
+
             $items = $data['items'] ?? null;
             unset($data['items']);
 
@@ -86,11 +94,15 @@ class BillingService
             if ($items !== null) {
                 $document->items()->delete();
                 foreach ($items as $itemData) {
+                    $qty   = (int)   ($itemData['quantity']  ?? 1);
+                    $price = (float) ($itemData['unit_price'] ?? 0);
                     BillingDocumentItem::create([
                         'billing_document_id' => $document->id,
                         'description'         => $itemData['description'],
-                        'quantity'            => $itemData['quantity'] ?? 1,
-                        'unit_price'          => $itemData['unit_price'],
+                        'quantity'            => $qty,
+                        'unit_price'          => $price,
+                        'total_price'         => $qty * $price,
+                        'tax_rate'            => $itemData['tax_rate'] ?? 0,
                         'notes'               => $itemData['notes'] ?? null,
                     ]);
                 }
@@ -116,16 +128,111 @@ class BillingService
     public function approve(string $id): BillingDocument
     {
         $document = $this->repository->findByIdOrFail($id);
+
+        // Generate the definitive sequential reference on first approval
+        $realNumber = $document->generateDocumentNumber();
+
         $document->update([
-            'status'      => 'approved',
-            'approved_by' => auth('api')->id(),
-            'approved_at' => now(),
+            'document_number' => $realNumber,
+            'status'          => 'approved',
+            'approved_by'     => auth('api')->id(),
+            'approved_at'     => now(),
         ]);
         $document = $document->fresh();
 
         $this->notificationService->notifyBillingApproved($document);
 
         return $document;
+    }
+
+    public function unapprove(string $id, string $reason): BillingDocument
+    {
+        $document = $this->repository->findByIdOrFail($id);
+
+        if (!in_array($document->status, ['approved', 'pending'])) {
+            abort(422, 'Seul un document approuvé peut être dévalidé.');
+        }
+
+        $document->update([
+            'status'           => 'draft',
+            'document_number'  => 'BROUILLON-' . strtoupper(\Illuminate\Support\Str::random(6)),
+            'unapprove_reason' => $reason,
+            'approved_by'      => null,
+            'approved_at'      => null,
+        ]);
+
+        return $document->fresh();
+    }
+
+    public function history(string $id): array
+    {
+        $document = $this->repository->findByIdOrFail($id);
+        $audits   = $document->audits()->with('user')->orderBy('created_at', 'asc')->get();
+
+        $eventLabels = [
+            'created' => 'Création du document',
+            'updated' => 'Modification',
+            'deleted' => 'Suppression',
+            'restored'=> 'Restauration',
+        ];
+
+        return $audits->map(function ($audit) use ($eventLabels, $document) {
+            $label  = $eventLabels[$audit->event] ?? ucfirst($audit->event);
+            $detail = null;
+            $type   = 'default';
+
+            $new = $audit->new_values ?? [];
+            $old = $audit->old_values ?? [];
+
+            // Identify meaningful state transitions
+            if (isset($new['status'])) {
+                switch ($new['status']) {
+                    case 'approved':
+                        $label  = 'Validation du document';
+                        $detail = isset($new['document_number']) ? 'Référence attribuée : ' . $new['document_number'] : null;
+                        $type   = 'success';
+                        break;
+                    case 'draft':
+                        if (isset($old['status']) && in_array($old['status'], ['approved', 'pending'])) {
+                            $label  = 'Dévalidation du document';
+                            $detail = $document->unapprove_reason ?? null;
+                            $type   = 'warning';
+                        }
+                        break;
+                    case 'paid':
+                        $label  = 'Marqué comme payé';
+                        $detail = isset($new['payment_method']) ? 'Mode : ' . $new['payment_method'] : null;
+                        $type   = 'success';
+                        break;
+                    case 'cancelled':
+                        $label  = 'Document annulé';
+                        $type   = 'error';
+                        break;
+                    case 'pending':
+                        $label  = 'Soumis pour validation';
+                        $type   = 'info';
+                        break;
+                }
+            } elseif ($audit->event === 'created') {
+                $type = 'info';
+            } elseif ($audit->event === 'updated') {
+                $changed = array_keys($new);
+                $ignored = ['updated_at', 'paid_amount', 'balance', 'subtotal', 'tax_amount', 'total_amount'];
+                $meaningful = array_diff($changed, $ignored);
+                if (empty($meaningful)) return null;
+                $detail = 'Champs modifiés : ' . implode(', ', $meaningful);
+            }
+
+            return [
+                'id'         => $audit->id,
+                'event'      => $audit->event,
+                'type'       => $type,
+                'label'      => $label,
+                'detail'     => $detail,
+                'user'       => $audit->user ? ['id' => $audit->user->id, 'name' => $audit->user->full_name] : null,
+                'created_at' => $audit->created_at->toISOString(),
+            ];
+        })->filter()->values()->toArray();
     }
 
     public function markAsPaid(string $id, array $data): BillingDocument

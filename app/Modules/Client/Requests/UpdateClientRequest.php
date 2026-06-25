@@ -8,6 +8,19 @@ class UpdateClientRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->filled('id_type')) {
+            $map = [
+                'CIN'              => 'cin',
+                'Passport'         => 'passport',
+                'Residence Permit' => 'residence_permit',
+            ];
+            $normalized = $map[$this->id_type] ?? strtolower(str_replace(' ', '_', $this->id_type));
+            $this->merge(['id_type' => $normalized]);
+        }
+    }
+
     public function rules(): array
     {
         return [

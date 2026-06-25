@@ -4,7 +4,10 @@ namespace App\Models;
 
 use App\Core\Traits\HasUuid;
 use App\Core\Traits\HasMediaCollections;
+use App\Models\Setting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -20,13 +23,13 @@ class BillingDocument extends Model implements HasMedia, Auditable
 
     protected $fillable = [
         'document_number', 'type', 'status', 'agency_id', 'reservation_id', 'client_id',
-        'client_name', 'client_address', 'client_phone', 'client_email',
+        'client_name', 'client_address', 'client_phone', 'client_email', 'client_ice',
         'issue_date', 'due_date', 'delivery_date',
         'subtotal', 'tax_rate', 'tax_amount', 'discount_percentage', 'discount_amount',
         'total_amount', 'paid_amount', 'balance',
         'payment_method', 'payment_reference', 'paid_at',
         'notes', 'terms_conditions', 'reference_document_number',
-        'created_by', 'approved_by', 'approved_at',
+        'created_by', 'approved_by', 'approved_at', 'unapprove_reason',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -54,28 +57,47 @@ class BillingDocument extends Model implements HasMedia, Auditable
     {
         static::creating(function (BillingDocument $document) {
             if (empty($document->document_number)) {
-                $document->document_number = $document->generateDocumentNumber();
+                // Temporary reference — real number generated on approval
+                $document->document_number = 'BROUILLON-' . strtoupper(Str::random(6));
             }
         });
     }
 
-    // Generate document number based on type
-    public function generateDocumentNumber(): string
+    public function isTempReference(): bool
     {
-        $year = now()->year;
-        $latest = static::where('type', $this->type)->whereYear('created_at', $year)->count() + 1;
-        return $this->type . '-' . $year . '-' . str_pad($latest, 6, '0', STR_PAD_LEFT);
+        return str_starts_with($this->document_number ?? '', 'BROUILLON-');
     }
 
-    // Calculate totals
+    // Generate document number using per-type configurable counters
+    public function generateDocumentNumber(): string
+    {
+        $type    = strtolower($this->type); // fa, av, dv, bc, bl, br
+        $prefix  = Setting::get('counters', $type . '_prefix',    $this->type);
+        $sep     = Setting::get('counters', $type . '_separator', '-');
+        $digits  = (int) Setting::get('counters', $type . '_digits',  6);
+        $current = (int) Setting::get('counters', $type . '_current', 0);
+
+        $next = $current + 1;
+
+        Setting::where('group', 'counters')
+            ->where('key', $type . '_current')
+            ->update(['value' => $next]);
+
+        Cache::forget('app_settings');
+
+        return $prefix . $sep . str_pad($next, $digits, '0', STR_PAD_LEFT);
+    }
+
+    // Calculate totals — TVA is per-line; no global discount
     public function calculateTotals(): void
     {
-        $this->subtotal = $this->items()->sum('total_price');
-        $this->discount_amount = $this->subtotal * ($this->discount_percentage / 100);
-        $subtotalAfterDiscount = $this->subtotal - $this->discount_amount;
-        $this->tax_amount = $subtotalAfterDiscount * ($this->tax_rate / 100);
-        $this->total_amount = $subtotalAfterDiscount + $this->tax_amount;
-        $this->balance = $this->total_amount - $this->paid_amount;
+        $items = $this->items()->get(['total_price', 'tax_rate']);
+
+        $this->subtotal        = $items->sum('total_price');
+        $this->tax_amount      = $items->sum(fn($i) => $i->total_price * ($i->tax_rate / 100));
+        $this->discount_amount = 0;
+        $this->total_amount    = $this->subtotal + $this->tax_amount;
+        $this->balance         = $this->total_amount - $this->paid_amount;
     }
 
     // Accessors

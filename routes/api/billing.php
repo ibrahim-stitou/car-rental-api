@@ -16,6 +16,8 @@ Route::middleware('auth:api')->prefix('billing')->group(function () {
     Route::put('/{id}',                        [BillingController::class, 'update'])->middleware('permission:edit-billing');
     Route::delete('/{id}',                     [BillingController::class, 'destroy'])->middleware('permission:delete-billing');
     Route::post('/{id}/approve',               [BillingController::class, 'approve'])->middleware('permission:approve-billing');
+    Route::post('/{id}/unapprove',             [BillingController::class, 'unapprove'])->middleware('permission:approve-billing');
+    Route::get('/{id}/history',                [BillingController::class, 'history']);
     Route::post('/{id}/mark-paid',             [BillingController::class, 'markAsPaid']);
     Route::post('/{id}/pdf',                   [BillingController::class, 'uploadPdf']);
     Route::post('/{id}/attachments',           [BillingController::class, 'uploadAttachments']);

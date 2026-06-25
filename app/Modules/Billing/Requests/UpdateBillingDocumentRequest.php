@@ -13,6 +13,7 @@ class UpdateBillingDocumentRequest extends FormRequest
         return [
             'status'                   => 'sometimes|in:draft,pending,approved,rejected,paid,cancelled',
             'client_name'              => 'sometimes|string|max:255',
+            'client_ice'               => 'nullable|string|max:30',
             'client_address'           => 'nullable|string',
             'client_phone'             => 'nullable|string|max:20',
             'client_email'             => 'nullable|email',
@@ -26,8 +27,8 @@ class UpdateBillingDocumentRequest extends FormRequest
             'items.*.description'      => 'required_with:items|string',
             'items.*.quantity'         => 'required_with:items|integer|min:1',
             'items.*.unit_price'       => 'required_with:items|numeric|min:0',
+            'items.*.tax_rate'         => 'nullable|numeric|min:0|max:100',
             'items.*.notes'            => 'nullable|string',
         ];
     }
 }
-
