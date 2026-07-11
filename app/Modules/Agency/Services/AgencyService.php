@@ -27,7 +27,7 @@ class AgencyService
 
     public function list(array $filters = [], int $perPage = 15, string $sortBy = 'created_at', string $sortDir = 'desc'): LengthAwarePaginator
     {
-        return $this->repository->paginate($perPage, $filters, ['manager'], $sortBy, $sortDir);
+        return $this->repository->paginate($perPage, $filters, ['manager'], $sortBy, $sortDir, ['vehicles']);
     }
 
     public function search(string $term, int $perPage = 15): LengthAwarePaginator

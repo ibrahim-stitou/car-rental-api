@@ -231,21 +231,59 @@ class VehicleController extends BaseController
         $currentInsurance = $vehicle->insurances()
             ->where('end_date', '>=', now())
             ->orderBy('end_date')
-            ->first(['id', 'insurance_company', 'policy_number', 'end_date', 'insurance_type']);
+            ->first(['id', 'insurance_company', 'policy_number', 'end_date', 'type']);
+        if ($currentInsurance) {
+            $currentInsurance->insurance_type = $currentInsurance->type;
+        }
 
         $lastInspection = $vehicle->technicalInspections()
             ->orderByDesc('inspection_date')
-            ->first(['id', 'inspection_date', 'next_inspection_date', 'result', 'center']);
+            ->first(['id', 'inspection_date', 'next_inspection_date', 'result', 'inspection_center']);
+        if ($lastInspection) {
+            $lastInspection->center = $lastInspection->inspection_center;
+        }
 
         $currentVignette = $vehicle->vignettes()
             ->where('expiry_date', '>=', now())
             ->orderByDesc('expiry_date')
-            ->first(['id', 'year', 'expiry_date', 'payment_status']);
+            ->first(['id', 'year', 'expiry_date', 'is_paid']);
+        if ($currentVignette) {
+            $currentVignette->payment_status = $currentVignette->is_paid ? 'paid' : 'unpaid';
+        }
 
         $pendingMaintenances = $vehicle->maintenances()
             ->whereIn('status', ['scheduled', 'in_progress'])
             ->orderBy('maintenance_date')
             ->get(['id', 'title', 'maintenance_date', 'status', 'priority']);
+
+        $documents = [];
+        foreach ($vehicle->getMediaByCollection('photos') as $m) {
+            $documents[] = $m + ['source' => 'Véhicule', 'source_label' => 'Photo'];
+        }
+        foreach ($vehicle->getMediaByCollection('documents') as $m) {
+            $documents[] = $m + ['source' => 'Véhicule', 'source_label' => 'Document'];
+        }
+        foreach ($vehicle->insurances()->get() as $insurance) {
+            foreach (['policy_document', 'green_card', 'attachments', 'documents'] as $collection) {
+                foreach ($insurance->getMediaByCollection($collection) as $m) {
+                    $documents[] = $m + ['source' => 'Assurance', 'source_label' => $insurance->insurance_company . ' — ' . $insurance->policy_number];
+                }
+            }
+        }
+        foreach ($vehicle->technicalInspections()->get() as $inspection) {
+            foreach (['inspection_report', 'photos', 'documents'] as $collection) {
+                foreach ($inspection->getMediaByCollection($collection) as $m) {
+                    $documents[] = $m + ['source' => 'Visite technique', 'source_label' => 'Visite du ' . optional($inspection->inspection_date)->format('d/m/Y')];
+                }
+            }
+        }
+        foreach ($vehicle->vignettes()->get() as $vignette) {
+            foreach (['vignette_document', 'payment_proof', 'documents'] as $collection) {
+                foreach ($vignette->getMediaByCollection($collection) as $m) {
+                    $documents[] = $m + ['source' => 'Vignette', 'source_label' => 'Vignette ' . $vignette->year];
+                }
+            }
+        }
 
         return $this->success([
             'vehicle' => new VehicleResource($vehicle),
@@ -266,6 +304,7 @@ class VehicleController extends BaseController
             'last_inspection'      => $lastInspection,
             'current_vignette'     => $currentVignette,
             'pending_maintenances' => $pendingMaintenances,
+            'documents'            => $documents,
         ]);
     }
 

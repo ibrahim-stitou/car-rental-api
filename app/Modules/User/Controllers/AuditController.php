@@ -21,7 +21,7 @@ class AuditController extends BaseController
             ->latest()
             ->paginate($request->integer('per_page', 15));
 
-        return $this->success($audits);
+        return $this->paginated($audits, null);
     }
 
     public function show(string $id): JsonResponse
@@ -55,7 +55,7 @@ class AuditController extends BaseController
             ->latest()
             ->paginate(15);
 
-        return $this->success($audits);
+        return $this->paginated($audits, null);
     }
 
     public function byUser(string $userId): JsonResponse
@@ -65,7 +65,7 @@ class AuditController extends BaseController
             ->latest()
             ->paginate(15);
 
-        return $this->success($audits);
+        return $this->paginated($audits, null);
     }
 
     public function destroy(string $id): JsonResponse

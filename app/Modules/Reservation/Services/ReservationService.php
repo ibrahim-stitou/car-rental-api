@@ -32,7 +32,7 @@ class ReservationService
 
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->paginate($perPage, $filters, ['agency', 'vehicle', 'client', 'creator']);
+        return $this->repository->paginate($perPage, $filters, ['agency', 'vehicle', 'client', 'creator'], 'created_at', 'desc', [], ['payments' => 'amount']);
     }
 
     public function search(string $term, int $perPage = 15): LengthAwarePaginator
@@ -42,7 +42,7 @@ class ReservationService
 
     public function find(string $id): Reservation
     {
-        return $this->repository->findByIdOrFail($id, ['agency', 'vehicle', 'client', 'creator']);
+        return $this->repository->findByIdOrFail($id, ['agency', 'vehicle', 'client', 'creator'], ['payments' => 'amount']);
     }
 
     public function create(array $data): Reservation
@@ -110,10 +110,19 @@ class ReservationService
     public function complete(string $id, array $data): Reservation
     {
         $reservation = $this->repository->findByIdOrFail($id);
-        $reservation->update(array_merge($data, [
+        $reservation->fill(array_merge($data, [
             'status'             => 'completed',
             'actual_return_date' => now(),
         ]));
+
+        // Additional fees can be adjusted at checkout — recalculate the total so
+        // balance/payment_status stay accurate for final settlement.
+        if (array_key_exists('additional_fees', $data)) {
+            $reservation->calculateTotal();
+        }
+
+        $reservation->save();
+        $reservation->syncPaymentStatus();
         $reservation->vehicle->update(['status' => 'available']);
         $reservation = $reservation->fresh();
 

@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ExpenseController extends BaseController
 {
@@ -30,10 +31,10 @@ class ExpenseController extends BaseController
     {
         $validator = Validator::make($request->all(), [
             'title'          => 'required|string|max:255',
-            'category'       => 'required|in:fuel,maintenance,insurance,vignette,inspection,repair,cleaning,administrative,salary,rent,utilities,other',
+            'category'       => ['required', Rule::exists('parameters', 'value')->where('category', 'expense_category')->where('is_active', true)],
             'amount'         => 'required|numeric|min:0',
             'expense_date'   => 'required|date',
-            'agency_id'      => 'nullable|uuid|exists:agencies,id',
+            'agency_id'      => 'required|uuid|exists:agencies,id',
             'vehicle_id'     => 'nullable|uuid|exists:vehicles,id',
             'payment_method' => 'nullable|in:cash,card,bank_transfer,check,online',
             'reference'      => 'nullable|string|max:255',
@@ -64,10 +65,10 @@ class ExpenseController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'title'          => 'sometimes|required|string|max:255',
-            'category'       => 'sometimes|required|in:fuel,maintenance,insurance,vignette,inspection,repair,cleaning,administrative,salary,rent,utilities,other',
+            'category'       => ['sometimes', 'required', Rule::exists('parameters', 'value')->where('category', 'expense_category')->where('is_active', true)],
             'amount'         => 'sometimes|required|numeric|min:0',
             'expense_date'   => 'sometimes|required|date',
-            'agency_id'      => 'nullable|uuid|exists:agencies,id',
+            'agency_id'      => 'sometimes|required|uuid|exists:agencies,id',
             'vehicle_id'     => 'nullable|uuid|exists:vehicles,id',
             'payment_method' => 'nullable|in:cash,card,bank_transfer,check,online',
             'reference'      => 'nullable|string|max:255',

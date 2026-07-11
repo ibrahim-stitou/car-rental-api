@@ -22,9 +22,15 @@ abstract class BaseRepository
         return $this->applyFilters($this->model->with($relations), $filters)->get();
     }
 
-    public function paginate(int $perPage = 15, array $filters = [], array $relations = [], string $sortBy = 'created_at', string $sortDir = 'desc'): LengthAwarePaginator
+    public function paginate(int $perPage = 15, array $filters = [], array $relations = [], string $sortBy = 'created_at', string $sortDir = 'desc', array $withCount = [], array $withSum = []): LengthAwarePaginator
     {
         $query = $this->model->with($relations);
+        if (!empty($withCount)) {
+            $query = $query->withCount($withCount);
+        }
+        foreach ($withSum as $relation => $column) {
+            $query = $query->withSum($relation, $column);
+        }
         $query = $this->applyFilters($query, $filters);
         $query = $query->orderBy($sortBy, $sortDir);
 
@@ -36,9 +42,13 @@ abstract class BaseRepository
         return $this->model->with($relations)->find($id);
     }
 
-    public function findByIdOrFail(string $id, array $relations = []): Model
+    public function findByIdOrFail(string $id, array $relations = [], array $withSum = []): Model
     {
-        return $this->model->with($relations)->findOrFail($id);
+        $query = $this->model->with($relations);
+        foreach ($withSum as $relation => $column) {
+            $query = $query->withSum($relation, $column);
+        }
+        return $query->findOrFail($id);
     }
 
     public function create(array $data): Model

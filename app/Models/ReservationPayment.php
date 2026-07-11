@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Traits\HasUuid;
+use App\Core\Traits\HasUuid;
 
 class ReservationPayment extends Model
 {

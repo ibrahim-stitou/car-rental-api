@@ -72,8 +72,18 @@ class Reservation extends Model implements HasMedia, Auditable
     public function generateReservationNumber(): string
     {
         $year = now()->year;
-        $latest = static::whereYear('created_at', $year)->count() + 1;
-        return 'RES-' . $year . '-' . str_pad($latest, 6, '0', STR_PAD_LEFT);
+        $prefix = "RES-{$year}-";
+
+        // Include soft-deleted rows: the unique index still holds their number,
+        // so a plain count() would collide once any reservation for the year is deleted.
+        $latestNumber = static::withTrashed()
+            ->where('reservation_number', 'like', $prefix . '%')
+            ->orderByDesc('reservation_number')
+            ->value('reservation_number');
+
+        $next = $latestNumber ? ((int) substr($latestNumber, strlen($prefix))) + 1 : 1;
+
+        return $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
     }
 
     public function calculateTotal(): void
@@ -82,6 +92,27 @@ class Reservation extends Model implements HasMedia, Auditable
         $this->subtotal = $this->daily_rate * $this->total_days;
         $this->discount_amount = $this->subtotal * ($this->discount_percentage / 100);
         $this->total_amount = $this->subtotal - $this->discount_amount + $this->additional_fees;
+    }
+
+    /**
+     * Recompute payment_status (pending|partial|paid) from the sum of recorded
+     * payments vs. the current total_amount. Single source of truth so it can't
+     * drift from the payments table — called whenever a payment or the total changes.
+     */
+    public function syncPaymentStatus(): string
+    {
+        $totalPaid = $this->payments()->sum('amount');
+        $balance   = $this->total_amount - $totalPaid;
+
+        $status = match(true) {
+            $balance <= 0  => 'paid',
+            $totalPaid > 0 => 'partial',
+            default        => 'pending',
+        };
+
+        $this->update(['payment_status' => $status]);
+
+        return $status;
     }
 
     public function isOverdue(): bool

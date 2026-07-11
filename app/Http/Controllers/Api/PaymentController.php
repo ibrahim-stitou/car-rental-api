@@ -65,17 +65,7 @@ class PaymentController extends BaseController
             'notes'          => $request->notes,
         ]);
 
-        // Update payment_status on the reservation
-        $totalPaid = $reservation->payments()->sum('amount');
-        $balance   = $reservation->total_amount - $totalPaid;
-
-        $paymentStatus = match(true) {
-            $balance <= 0  => 'paid',
-            $totalPaid > 0 => 'partial',
-            default        => 'pending',
-        };
-
-        $reservation->update(['payment_status' => $paymentStatus]);
+        $reservation->syncPaymentStatus();
 
         return $this->created($payment->load('recorder:id,first_name,last_name'), 'Paiement enregistré');
     }
@@ -88,19 +78,8 @@ class PaymentController extends BaseController
         $payment = ReservationPayment::where('reservation_id', $reservationId)->findOrFail($paymentId);
         $payment->delete();
 
-        // Recalculate payment_status
         $reservation = Reservation::find($reservationId);
-        if ($reservation) {
-            $totalPaid = $reservation->payments()->sum('amount');
-            $balance   = $reservation->total_amount - $totalPaid;
-
-            $paymentStatus = match(true) {
-                $balance <= 0  => 'paid',
-                $totalPaid > 0 => 'partial',
-                default        => 'pending',
-            };
-            $reservation->update(['payment_status' => $paymentStatus]);
-        }
+        $reservation?->syncPaymentStatus();
 
         return $this->success(null, 'Paiement supprimé');
     }

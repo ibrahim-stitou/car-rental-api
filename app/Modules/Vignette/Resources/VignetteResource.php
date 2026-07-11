@@ -24,6 +24,7 @@ class VignetteResource extends JsonResource
             'payment_reference' => $this->payment_reference,
             'is_paid'           => $this->is_paid,
             'paid_at'           => $this->paid_at?->toISOString(),
+            'agent_notes'       => $this->agent_notes,
             'document'          => $this->getFirstMediaUrl('vignette_document'),
             'payment_proof'     => $this->getFirstMediaUrl('payment_proof'),
             'creator'           => $this->whenLoaded('creator', fn() => [

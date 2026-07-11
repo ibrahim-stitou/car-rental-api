@@ -24,7 +24,7 @@ class Vehicle extends Model implements HasMedia, Auditable
     protected $fillable = [
         'agency_id', 'brand', 'model', 'year', 'registration_number',
         'vin', 'color', 'category', 'fuel_type', 'transmission',
-        'seats', 'daily_rate', 'deposit_amount', 'mileage',
+        'seats', 'daily_rate', 'deposit_amount', 'mileage', 'average_consumption',
         'status', 'is_active', 'notes', 'has_adblue', 'description',
         'show_on_website', 'website_description', 'website_price_override',
     ];
@@ -39,6 +39,7 @@ class Vehicle extends Model implements HasMedia, Auditable
             'daily_rate'     => 'decimal:2',
             'deposit_amount' => 'decimal:2',
             'mileage'        => 'integer',
+            'average_consumption'     => 'decimal:2',
             'is_active'               => 'boolean',
             'has_adblue'              => 'boolean',
             'show_on_website'         => 'boolean',

@@ -39,7 +39,9 @@ class ReservationResource extends JsonResource
             'total_amount'        => $this->total_amount,
             'deposit_amount'      => $this->deposit_amount,
             'deposit_paid'        => $this->deposit_paid,
-            'paid_amount'         => (float) $this->payments()->sum('amount'),
+            'paid_amount'         => (float) (array_key_exists('payments_sum_amount', $this->getAttributes())
+                ? ($this->payments_sum_amount ?? 0)
+                : $this->payments()->sum('amount')),
             'payment_status'      => $this->payment_status,
             'payment_method'      => $this->payment_method,
             'initial_mileage'     => $this->initial_mileage,

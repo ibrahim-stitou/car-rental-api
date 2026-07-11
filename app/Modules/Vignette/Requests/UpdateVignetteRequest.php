@@ -19,6 +19,7 @@ class UpdateVignetteRequest extends FormRequest
             'payment_method'    => 'nullable|in:cash,bank_transfer,online',
             'payment_reference' => 'nullable|string|max:255',
             'is_paid'           => 'nullable|boolean',
+            'agent_notes'       => 'nullable|string',
         ];
     }
 }

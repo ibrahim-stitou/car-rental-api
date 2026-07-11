@@ -21,7 +21,10 @@ class UpdateReservationRequest extends FormRequest
             'deposit_amount'      => 'nullable|numeric|min:0',
             'deposit_paid'        => 'nullable|boolean',
             'payment_method'      => 'nullable|in:cash,card,bank_transfer,online',
-            'payment_status'      => 'nullable|in:pending,partial,paid,refunded',
+            // pending/partial/paid are derived from recorded payments (Reservation::syncPaymentStatus())
+            // and must not be set directly here to avoid drifting from the actual paid amount.
+            // 'refunded' is the only manual-only state (money returned outside payment tracking).
+            'payment_status'      => 'nullable|in:refunded',
             'fuel_level_pickup'   => 'nullable|in:empty,quarter,half,three_quarters,full',
             'fuel_level_return'   => 'nullable|in:empty,quarter,half,three_quarters,full',
             'initial_mileage'     => 'nullable|integer|min:0',

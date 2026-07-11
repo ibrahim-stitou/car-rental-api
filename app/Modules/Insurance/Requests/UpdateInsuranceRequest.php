@@ -3,6 +3,7 @@
 namespace App\Modules\Insurance\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateInsuranceRequest extends FormRequest
 {
@@ -14,7 +15,7 @@ class UpdateInsuranceRequest extends FormRequest
             'vehicle_id'        => 'sometimes|uuid|exists:vehicles,id',
             'insurance_company' => 'sometimes|string|max:255',
             'policy_number'     => 'sometimes|string|unique:insurances,policy_number,' . $this->route('id'),
-            'type'              => 'sometimes|in:third_party,comprehensive,all_risk',
+            'type'              => ['sometimes', Rule::exists('parameters', 'value')->where('category', 'insurance_type')->where('is_active', true)],
             'start_date'        => 'sometimes|date',
             'end_date'          => 'sometimes|date|after:start_date',
             'premium_amount'    => 'sometimes|numeric|min:0',
