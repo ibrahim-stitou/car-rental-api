@@ -16,7 +16,7 @@ class RoleController extends BaseController
      */
     public function index(): JsonResponse
     {
-        $roles = Role::with('permissions')->get();
+        $roles = Role::with('permissions')->withCount(['users', 'permissions'])->get();
         return $this->success($roles);
     }
 
@@ -43,7 +43,7 @@ class RoleController extends BaseController
 
     public function show(string $id): JsonResponse
     {
-        $role = Role::with('permissions')->findOrFail($id);
+        $role = Role::with('permissions')->withCount('users')->findOrFail($id);
         return $this->success($role);
     }
 
@@ -92,6 +92,30 @@ class RoleController extends BaseController
             $role->revokePermissionTo($permission);
         }
         return $this->success($role->load('permissions'), 'Permissions revoked');
+    }
+
+    public function users(string $id): JsonResponse
+    {
+        $role = Role::findOrFail($id);
+        $users = $role->users()->with('agency')->get();
+        return $this->success($users);
+    }
+
+    public function attachUser(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['user_id' => 'required|uuid|exists:users,id']);
+        $role = Role::findOrFail($id);
+        $user = \App\Models\User::findOrFail($request->user_id);
+        $user->assignRole($role);
+        return $this->success($role->users()->with('agency')->get(), 'User added to role');
+    }
+
+    public function detachUser(string $id, string $userId): JsonResponse
+    {
+        $role = Role::findOrFail($id);
+        $user = \App\Models\User::findOrFail($userId);
+        $user->removeRole($role);
+        return $this->success($role->users()->with('agency')->get(), 'User removed from role');
     }
 }
 

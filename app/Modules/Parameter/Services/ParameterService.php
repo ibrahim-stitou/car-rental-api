@@ -54,11 +54,14 @@ class ParameterService
     public function usageLabel(Parameter $parameter): ?string
     {
         $count = match ($parameter->category) {
-            'insurance_type'    => \App\Models\Insurance::where('type', $parameter->value)->count(),
-            'insurance_company' => \App\Models\Insurance::where('insurance_company', $parameter->value)->count(),
-            'inspection_center' => \App\Models\TechnicalInspection::where('inspection_center', $parameter->value)->count(),
-            'expense_category'  => \App\Models\Expense::where('category', $parameter->value)->count(),
-            default             => 0,
+            'insurance_type'        => \App\Models\Insurance::where('type', $parameter->value)->count(),
+            'insurance_company'     => \App\Models\Insurance::where('insurance_company', $parameter->value)->count(),
+            'inspection_center'     => \App\Models\TechnicalInspection::where('inspection_center', $parameter->value)->count(),
+            'expense_category'      => \App\Models\Expense::where('category', $parameter->value)->count(),
+            'accident_type'         => \App\Models\Claim::where('accident_type', $parameter->value)->count(),
+            'maintenance_type'      => \App\Models\Maintenance::where('type', $parameter->value)->count(),
+            'maintenance_sub_type'  => \App\Models\Maintenance::where('sub_type', $parameter->value)->count(),
+            default                 => 0,
         };
 
         return $count > 0 ? "Utilisé par {$count} enregistrement(s)" : null;

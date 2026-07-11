@@ -13,7 +13,7 @@ Route::prefix('public')->group(function () {
 });
 
 // ─── Admin (authentication required) ────────────────────────────────────────
-Route::middleware('auth:api')->prefix('website')->group(function () {
+Route::middleware(['auth:api', 'permission:manage-website'])->prefix('website')->group(function () {
     Route::get('/stats',                                [WebsiteController::class, 'stats']);
 
     // Demandes de réservation publiques

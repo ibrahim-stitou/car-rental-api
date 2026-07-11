@@ -150,9 +150,14 @@ class VehicleController extends BaseController
 
     public function uploadDocuments(Request $request, string $id): JsonResponse
     {
-        $request->validate(['documents' => 'required|array', 'documents.*' => 'file|max:10240']);
+        $request->validate([
+            'documents'    => 'required|array',
+            'documents.*'  => 'file|max:10240',
+            'names'        => 'nullable|array',
+            'names.*'      => 'nullable|string|max:255',
+        ]);
         $vehicle = $this->service->find($id);
-        $vehicle->uploadMultipleMedia($request->file('documents'), 'documents');
+        $vehicle->uploadMultipleMedia($request->file('documents'), 'documents', $request->input('names'));
         return $this->success($vehicle->getMediaByCollection('documents'), 'Documents uploaded successfully');
     }
 

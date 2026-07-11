@@ -55,6 +55,19 @@ class PaymentController extends BaseController
             return $this->validationError($validator->errors());
         }
 
+        $totalPaid = (float) $reservation->payments()->sum('amount');
+        $balance   = (float) $reservation->total_amount - $totalPaid;
+
+        if ($balance <= 0) {
+            return $this->error('Cette réservation est déjà entièrement payée.', 422);
+        }
+
+        if ((float) $request->amount > $balance) {
+            return $this->validationError([
+                'amount' => ["Le montant ne peut pas dépasser le solde restant (" . number_format($balance, 2) . " MAD)."],
+            ]);
+        }
+
         $payment = ReservationPayment::create([
             'reservation_id' => $reservationId,
             'recorded_by'    => Auth::id(),

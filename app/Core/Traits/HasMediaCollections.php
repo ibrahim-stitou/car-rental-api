@@ -7,18 +7,23 @@ use Illuminate\Support\Str;
 
 trait HasMediaCollections
 {
-    public function uploadMedia(UploadedFile $file, string $collection)
+    public function uploadMedia(UploadedFile $file, string $collection, ?string $name = null)
     {
-        return $this->addMedia($file)
-            ->usingFileName(Str::uuid() . '.' . $file->getClientOriginalExtension())
-            ->toMediaCollection($collection);
+        $adder = $this->addMedia($file)
+            ->usingFileName(Str::uuid() . '.' . $file->getClientOriginalExtension());
+
+        if ($name) {
+            $adder->usingName($name);
+        }
+
+        return $adder->toMediaCollection($collection);
     }
 
-    public function uploadMultipleMedia(array $files, string $collection): array
+    public function uploadMultipleMedia(array $files, string $collection, ?array $names = null): array
     {
         $media = [];
-        foreach ($files as $file) {
-            $media[] = $this->uploadMedia($file, $collection);
+        foreach ($files as $index => $file) {
+            $media[] = $this->uploadMedia($file, $collection, $names[$index] ?? null);
         }
         return $media;
     }

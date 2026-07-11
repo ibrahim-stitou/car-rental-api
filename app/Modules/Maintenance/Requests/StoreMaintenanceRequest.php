@@ -3,6 +3,7 @@
 namespace App\Modules\Maintenance\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMaintenanceRequest extends FormRequest
 {
@@ -13,8 +14,8 @@ class StoreMaintenanceRequest extends FormRequest
         return [
             'vehicle_id'              => 'required|uuid|exists:vehicles,id',
             'title'                   => 'nullable|string|max:255',
-            'type'                    => 'required|in:oil_change,tire_change,brake_service,engine_repair,body_repair,electrical,cleaning,other',
-            'sub_type'                => 'nullable|in:oil_change,tire_change,brake_service,filter_change,battery,timing_belt,general_service,other',
+            'type'                    => ['required', Rule::exists('parameters', 'value')->where('category', 'maintenance_type')->where('is_active', true)],
+            'sub_type'                => ['nullable', Rule::exists('parameters', 'value')->where('category', 'maintenance_sub_type')->where('is_active', true)],
             'description'             => 'required|string',
             'agent_notes'             => 'nullable|string',
             'maintenance_date'        => 'required|date',

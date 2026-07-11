@@ -51,7 +51,7 @@ class AuthController extends BaseController
 
         if (!$user->is_active) {
             auth('api')->logout();
-            return $this->error('Account is deactivated', 403);
+            return $this->error('Votre compte a été suspendu. Veuillez contacter l\'administrateur.', 403);
         }
 
         $user->update(['last_login_at' => now()]);
@@ -254,12 +254,13 @@ class AuthController extends BaseController
             'token_type'   => 'bearer',
             'expires_in'   => auth('api')->factory()->getTTL() * 60,
             'user'         => [
-                'id'         => $user->id,
-                'first_name' => $user->first_name,
-                'last_name'  => $user->last_name,
-                'full_name'  => $user->full_name,
-                'email'      => $user->email,
-                'roles'      => $user->getRoleNames(),
+                'id'          => $user->id,
+                'first_name'  => $user->first_name,
+                'last_name'   => $user->last_name,
+                'full_name'   => $user->full_name,
+                'email'       => $user->email,
+                'roles'       => $user->getRoleNames(),
+                'permissions' => $user->getAllPermissions()->pluck('name'),
             ],
         ];
     }

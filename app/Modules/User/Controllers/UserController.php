@@ -109,6 +109,18 @@ class UserController extends BaseController
         return $this->success(new UserResource($user), 'User status toggled');
     }
 
+    public function activate(string $id): JsonResponse
+    {
+        $user = $this->service->activate($id);
+        return $this->success(new UserResource($user), 'User activated');
+    }
+
+    public function suspend(string $id): JsonResponse
+    {
+        $user = $this->service->suspend($id);
+        return $this->success(new UserResource($user), 'User suspended');
+    }
+
     /**
      * @OA\Post(path="/users/{id}/avatar", summary="Upload avatar utilisateur", tags={"Users"}, security={{"bearerAuth":{}}},
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),

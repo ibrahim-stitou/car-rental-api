@@ -80,6 +80,22 @@ class UserService
         return $user;
     }
 
+    public function activate(string $id): User
+    {
+        $user = $this->repository->findByIdOrFail($id);
+        $user->update(['is_active' => true]);
+        return $user->fresh();
+    }
+
+    public function suspend(string $id): User
+    {
+        $user = $this->repository->findByIdOrFail($id);
+        $user->update(['is_active' => false]);
+        $user = $user->fresh();
+        $this->notificationService->notifyUserDeactivated($user);
+        return $user;
+    }
+
     public function assignRole(string $id, string $role): User
     {
         $user = $this->repository->findByIdOrFail($id);

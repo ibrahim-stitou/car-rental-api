@@ -3,6 +3,7 @@
 namespace App\Modules\Claim\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateClaimRequest extends FormRequest
 {
@@ -19,7 +20,7 @@ class UpdateClaimRequest extends FormRequest
             'title'                      => 'sometimes|string|max:255',
             'description'                => 'nullable|string',
             'agent_notes'                => 'nullable|string',
-            'accident_type'              => 'sometimes|in:collision,theft,vandalism,natural_disaster,fire,glass_damage,parking,other',
+            'accident_type'              => ['sometimes', Rule::exists('parameters', 'value')->where('category', 'accident_type')->where('is_active', true)],
             'is_client_responsible'      => 'boolean',
             'responsible_notes'          => 'nullable|string',
             'status'                     => 'sometimes|in:open,under_review,insurance_claimed,settled,closed,rejected',

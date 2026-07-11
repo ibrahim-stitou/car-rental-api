@@ -86,6 +86,17 @@ return Application::configure(basePath: dirname(__DIR__))
             }
         });
 
+        $exceptions->renderable(function (\Spatie\Permission\Exceptions\UnauthorizedException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success'              => false,
+                    'message'              => "Vous n'avez pas la permission nécessaire pour effectuer cette action.",
+                    'required_permissions' => $e->getRequiredPermissions(),
+                    'code'                 => 403,
+                ], 403);
+            }
+        });
+
         $exceptions->renderable(function (\Tymon\JWTAuth\Exceptions\TokenExpiredException $e, $request) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([

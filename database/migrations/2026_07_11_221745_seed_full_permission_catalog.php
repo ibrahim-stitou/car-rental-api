@@ -1,16 +1,12 @@
 <?php
 
-namespace Database\Seeders;
-
-use Illuminate\Database\Seeder;
+use Illuminate\Database\Migrations\Migration;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
-class PermissionSeeder extends Seeder
+return new class extends Migration
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function up(): void
     {
         $catalog = [
             'Agences' => [
@@ -81,11 +77,11 @@ class PermissionSeeder extends Seeder
                 'delete-expense' => 'Supprimer une dépense',
             ],
             'Utilisateurs' => [
-                'view-user'         => 'Voir les utilisateurs',
-                'create-user'       => 'Créer un utilisateur',
-                'edit-user'         => 'Modifier un utilisateur',
-                'delete-user'       => 'Supprimer un utilisateur',
-                'manage-user-roles' => 'Gérer les rôles utilisateur',
+                'view-user'          => 'Voir les utilisateurs',
+                'create-user'        => 'Créer un utilisateur',
+                'edit-user'          => 'Modifier un utilisateur',
+                'delete-user'        => 'Supprimer un utilisateur',
+                'manage-user-roles'  => 'Gérer les rôles utilisateur',
             ],
             'Rôles' => [
                 'view-role'         => 'Voir les rôles',
@@ -98,11 +94,11 @@ class PermissionSeeder extends Seeder
                 'view-logs' => "Voir le journal d'activité",
             ],
             'Facturation' => [
-                'view-billing'    => 'Voir la facturation',
-                'create-billing'  => 'Créer une facture',
-                'edit-billing'    => 'Modifier une facture',
-                'delete-billing'  => 'Supprimer une facture',
-                'approve-billing' => 'Approuver une facture',
+                'view-billing'     => 'Voir la facturation',
+                'create-billing'   => 'Créer une facture',
+                'edit-billing'     => 'Modifier une facture',
+                'delete-billing'   => 'Supprimer une facture',
+                'approve-billing'  => 'Approuver une facture',
             ],
             'Paramètres' => [
                 'manage-settings' => 'Gérer les paramètres',
@@ -124,5 +120,41 @@ class PermissionSeeder extends Seeder
                 );
             }
         }
+
+        $superAdmin = Role::where('name', 'super-admin')->where('guard_name', 'api')->first();
+        if ($superAdmin) {
+            $superAdmin->syncPermissions(Permission::where('guard_name', 'api')->get());
+        }
+
+        // Admin keeps everything except role-management, mirroring RoleSeeder's rule.
+        $admin = Role::where('name', 'admin')->where('guard_name', 'api')->first();
+        if ($admin) {
+            $admin->givePermissionTo(
+                Permission::where('guard_name', 'api')
+                    ->whereNotIn('name', ['create-role', 'edit-role', 'delete-role', 'assign-permission'])
+                    ->get()
+            );
+        }
+
+        $newGrants = [
+            'manager' => ['view-claim', 'create-claim', 'edit-claim', 'manage-claim-documents', 'view-expense', 'create-expense', 'edit-expense', 'view-parameter', 'view-dashboard'],
+            'agent'   => ['view-claim', 'create-claim', 'view-expense', 'view-dashboard'],
+            'viewer'  => ['view-claim', 'view-expense', 'view-dashboard'],
+        ];
+        foreach ($newGrants as $roleName => $permissionNames) {
+            $role = Role::where('name', $roleName)->where('guard_name', 'api')->first();
+            if ($role) {
+                $role->givePermissionTo($permissionNames);
+            }
+        }
     }
-}
+
+    public function down(): void
+    {
+        Permission::whereIn('name', [
+            'view-claim', 'create-claim', 'edit-claim', 'delete-claim', 'manage-claim-documents',
+            'view-expense', 'create-expense', 'edit-expense', 'delete-expense',
+            'view-parameter', 'view-dashboard',
+        ])->delete();
+    }
+};
