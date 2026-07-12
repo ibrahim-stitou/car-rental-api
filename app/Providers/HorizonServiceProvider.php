@@ -11,13 +11,19 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
+    public function boot()
     {
         parent::boot();
 
-        // Horizon::routeSmsNotificationsTo('15556667777');
-        // Horizon::routeMailNotificationsTo('example@example.com');
-        // Horizon::routeSlackNotificationsTo('slack-webhook-url', '#channel');
+        // Si on demande l'URL horizon en production sans les bons identifiants, on déclenche l'invite basic auth
+        if (app()->environment('production') && request()->is('horizon*')) {
+            if (request()->getUser() !== env('HORIZON_USER') || request()->getPassword() !== env('HORIZON_PASSWORD')) {
+                header('WWW-Authenticate: Basic realm="Horizon Dashboard"');
+                header('HTTP/1.0 401 Unauthorized');
+                echo 'Accès refusé.';
+                exit;
+            }
+        }
     }
 
     /**
@@ -28,12 +34,12 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate()
     {
         Gate::define('viewHorizon', function ($user = null) {
-            // Si on est en local, on autorise directement
+            // En local (Windows), on s'autorise l'accès direct sans mot de passe
             if (app()->environment('local')) {
                 return true;
             }
 
-            // Vérification des identifiants HTTP Basic
+            // En production, on compare ce qui est tapé avec les valeurs du .env
             return request()->getUser() === env('HORIZON_USER') &&
                 request()->getPassword() === env('HORIZON_PASSWORD');
         });
