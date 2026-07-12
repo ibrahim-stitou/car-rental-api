@@ -49,6 +49,7 @@ class ReservationService
     public function create(array $data): Reservation
     {
         $data['created_by'] = auth('api')->id();
+        $data['status'] = $data['status'] ?? 'pending';
 
         $vehicle = Vehicle::findOrFail($data['vehicle_id']);
         $data['daily_rate'] = $data['daily_rate'] ?? $vehicle->daily_rate;

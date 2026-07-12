@@ -65,5 +65,12 @@ class AppServiceProvider extends ServiceProvider
                 \App\Modules\Notification\Commands\SendScheduledAlerts::class,
             ]);
         }
+
+        // This is an API-only app with no "login" web route. Without this,
+        // an unauthenticated request that doesn't explicitly ask for JSON
+        // (no Accept: application/json header) makes the auth middleware
+        // try to redirect to route('login'), which throws a confusing
+        // RouteNotFoundException instead of a clean 401.
+        \Illuminate\Auth\Middleware\Authenticate::redirectUsing(fn () => null);
     }
 }

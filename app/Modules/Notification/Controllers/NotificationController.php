@@ -222,7 +222,7 @@ class NotificationController extends BaseController
 
         // Envoi par rôle (tous les utilisateurs)
         if ($request->filled('roles') && !$request->filled('agency_id') && !$request->filled('user_ids')) {
-            $users = \App\Models\User::where('is_active', true)->role($request->roles)->get();
+            $users = \App\Models\User::where('is_active', true)->role($request->roles, 'api')->get();
             $this->service->sendToUsers($users, NotificationType::SYSTEM_ALERT, $payload);
             $count += $users->count();
         }
@@ -230,7 +230,7 @@ class NotificationController extends BaseController
         // Si aucune cible, envoyer aux admins
         if ($count === 0) {
             $this->service->sendToAdmins(NotificationType::SYSTEM_ALERT, $payload);
-            $count = \App\Models\User::where('is_active', true)->role(['super-admin', 'admin'])->count();
+            $count = \App\Models\User::where('is_active', true)->role(['super-admin', 'admin'], 'api')->count();
         }
 
         return $this->success(['recipients' => $count], "Notification envoyée à {$count} utilisateur(s)");

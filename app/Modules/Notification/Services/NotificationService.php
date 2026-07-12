@@ -37,7 +37,10 @@ class NotificationService
     {
         $query = User::where('agency_id', $agencyId)->where('is_active', true);
         if (!empty($roles)) {
-            $query->role($roles);
+            // Roles are seeded under the "api" guard (this is a JWT-only API);
+            // config('auth.defaults.guard') is "web", which Spatie's role()
+            // scope falls back to when no guard is given, so it must be explicit.
+            $query->role($roles, 'api');
         }
         $users = $query->get();
         $this->sendToUsers($users, $type, $payload);
@@ -48,7 +51,7 @@ class NotificationService
      */
     public function sendToAdmins(NotificationType $type, array $payload = []): void
     {
-        $users = User::where('is_active', true)->role(['super-admin', 'admin'])->get();
+        $users = User::where('is_active', true)->role(['super-admin', 'admin'], 'api')->get();
         $this->sendToUsers($users, $type, $payload);
     }
 

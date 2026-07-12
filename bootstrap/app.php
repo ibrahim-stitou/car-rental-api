@@ -126,4 +126,25 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 401);
             }
         });
+
+        // Catch-all: any exception not matched above (e.g. a misconfigured
+        // guard, a missing relation, a third-party package error) must still
+        // surface a specific, identifiable message instead of Laravel's
+        // generic "Server Error" — that string alone gives no way to find
+        // the actual bug. File/line/trace are added only when app.debug is on.
+        $exceptions->renderable(function (\Throwable $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                $payload = [
+                    'success'   => false,
+                    'message'   => $e->getMessage() ?: class_basename($e),
+                    'exception' => class_basename($e),
+                    'code'      => 500,
+                ];
+                if (config('app.debug')) {
+                    $payload['file']  = $e->getFile() . ':' . $e->getLine();
+                    $payload['trace'] = collect($e->getTrace())->take(8)->toArray();
+                }
+                return response()->json($payload, 500);
+            }
+        });
     })->create();
