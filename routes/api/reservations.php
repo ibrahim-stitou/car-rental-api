@@ -25,6 +25,7 @@ Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::post('/{id}/pickup-photos',     [ReservationController::class, 'uploadPickupPhotos'])->middleware('permission:edit-reservation');
     Route::post('/{id}/return-photos',     [ReservationController::class, 'uploadReturnPhotos'])->middleware('permission:edit-reservation');
     Route::post('/{id}/damage-report',     [ReservationController::class, 'uploadDamageReport'])->middleware('permission:edit-reservation');
+    Route::post('/{id}/documents',         [ReservationController::class, 'uploadDocuments'])->middleware('permission:edit-reservation');
     Route::delete('/{id}/media/{mediaId}', [ReservationController::class, 'deleteMedia'])->middleware('permission:edit-reservation');
     Route::get('/{id}/invoice',            [ReservationController::class, 'generateInvoice'])->middleware('permission:view-reservation');
     Route::post('/{id}/restore',           [ReservationController::class, 'restore'])->middleware('permission:edit-reservation');

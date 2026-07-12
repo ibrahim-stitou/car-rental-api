@@ -38,7 +38,7 @@ class ReservationController extends BaseController
             return $this->paginated($data, ReservationResource::class);
         }
 
-        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status']);
+        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status', 'overdue']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, ReservationResource::class);
     }
@@ -121,6 +121,8 @@ class ReservationController extends BaseController
         $reservation = $this->service->confirm($id);
         // Store who validated
         $reservation->update(['validated_by' => auth()->id()]);
+        // Generate and lock the contract PDF (includes the validator's stamp/signature).
+        $reservation = $this->service->generateAndLockContract($reservation->fresh(['agency', 'vehicle', 'client', 'validator']));
         return $this->success(new ReservationResource($reservation), 'Reservation confirmed');
     }
 
@@ -158,9 +160,13 @@ class ReservationController extends BaseController
     public function complete(Request $request, string $id): JsonResponse
     {
         $data = $request->validate([
-            'final_mileage'    => 'nullable|integer|min:0',
-            'fuel_level_return' => 'nullable|in:empty,quarter,half,three_quarters,full',
-            'additional_fees'   => 'nullable|numeric|min:0',
+            'final_mileage'           => 'nullable|integer|min:0',
+            'fuel_level_return'       => 'nullable|in:empty,quarter,half,three_quarters,full',
+            'additional_fees'         => 'nullable|numeric|min:0',
+            'actual_return_date'      => 'nullable|date',
+            'actual_return_location'  => 'nullable|string|max:255',
+            'is_favorable'            => 'nullable|boolean',
+            'closure_comment'         => 'nullable|string',
         ]);
         $reservation = $this->service->complete($id, $data);
         return $this->success(new ReservationResource($reservation), 'Reservation completed (return done)');
@@ -288,6 +294,26 @@ class ReservationController extends BaseController
     }
 
     /**
+     * @OA\Post(path="/reservations/{id}/documents", summary="Ajouter des documents (avec titre)", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\MediaType(mediaType="multipart/form-data",
+     *     @OA\Schema(
+     *       @OA\Property(property="documents[]", type="array", @OA\Items(type="string", format="binary")),
+     *       @OA\Property(property="names[]", type="array", @OA\Items(type="string"))
+     *     )
+     *   )),
+     *   @OA\Response(response=200, description="Uploaded")
+     * )
+     */
+    public function uploadDocuments(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['documents' => 'required|array', 'documents.*' => 'file|max:10240']);
+        $reservation = $this->service->find($id);
+        $reservation->uploadMultipleMedia($request->file('documents'), 'documents', $request->input('names'));
+        return $this->success($reservation->getMediaByCollection('documents'), 'Documents téléversés');
+    }
+
+    /**
      * @OA\Delete(path="/reservations/{id}/media/{mediaId}", summary="Supprimer un média", tags={"Reservations"}, security={{"bearerAuth":{}}},
      *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
      *   @OA\Parameter(name="mediaId", in="path", required=true, @OA\Schema(type="integer")),
@@ -322,6 +348,16 @@ class ReservationController extends BaseController
     public function contractPdf(Request $request, string $id): Response
     {
         $reservation = $this->service->find($id);
+
+        // Once locked, always serve the stored file as-is — never regenerate
+        // from current (possibly since-edited) reservation data.
+        if ($reservation->contract_generated_at && ($media = $reservation->getFirstMedia('contract'))) {
+            $filename = 'contract-' . $reservation->reservation_number . '.pdf';
+            return $request->boolean('download')
+                ? response()->download($media->getPath(), $filename)
+                : response()->file($media->getPath(), ['Content-Type' => 'application/pdf']);
+        }
+
         return $this->pdfService->generateReservationContract($reservation, $request->boolean('download'));
     }
 
@@ -334,8 +370,8 @@ class ReservationController extends BaseController
     public function saveContractPdf(string $id): JsonResponse
     {
         $reservation = $this->service->find($id);
-        $url         = $this->pdfService->saveReservationContractToMedia($reservation);
-        return $this->success(['url' => $url], 'Contract PDF generated and saved');
+        $reservation = $this->service->generateAndLockContract($reservation);
+        return $this->success(['url' => $reservation->getFirstMediaUrl('contract')], 'Contract PDF generated and saved');
     }
 
     /**

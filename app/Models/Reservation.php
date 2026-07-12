@@ -25,7 +25,8 @@ class Reservation extends Model implements HasMedia, Auditable
         'reservation_number', 'agency_id', 'vehicle_id', 'client_id', 'created_by', 'validated_by',
         'second_driver_id', 'second_driver_name', 'second_driver_license', 'second_driver_phone',
         'pickup_date', 'return_date', 'actual_return_date',
-        'pickup_location', 'return_location', 'status',
+        'pickup_location', 'return_location', 'actual_return_location', 'status',
+        'contract_generated_at', 'is_favorable', 'closure_comment',
         'daily_rate', 'total_days', 'subtotal',
         'discount_percentage', 'discount_amount', 'additional_fees', 'total_amount',
         'deposit_amount', 'deposit_paid', 'deposit_paid_at',
@@ -56,6 +57,8 @@ class Reservation extends Model implements HasMedia, Auditable
             'initial_mileage'     => 'integer',
             'final_mileage'       => 'integer',
             'cancelled_at'        => 'datetime',
+            'contract_generated_at' => 'datetime',
+            'is_favorable'        => 'boolean',
         ];
     }
 
@@ -150,5 +153,13 @@ class Reservation extends Model implements HasMedia, Auditable
         $this->addMediaCollection('return_photos')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
         $this->addMediaCollection('damage_reports');
+        $this->addMediaCollection('documents')
+            ->acceptsMimeTypes([
+                'application/pdf', 'image/jpeg', 'image/png', 'image/webp',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ]);
     }
 }

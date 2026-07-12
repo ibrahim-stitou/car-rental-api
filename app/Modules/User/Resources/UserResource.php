@@ -28,6 +28,7 @@ class UserResource extends JsonResource
             'signature'   => $this->getFirstMediaUrl('signature') ?: null,
             'stamp'       => $this->getFirstMediaUrl('stamp') ?: null,
             'has_signature' => $this->hasSignature(),
+            'has_stamp'     => $this->getFirstMediaUrl('stamp') !== '',
             'last_login_at' => $this->last_login_at?->toISOString(),
             'created_at'    => $this->created_at?->toISOString(),
             'updated_at'    => $this->updated_at?->toISOString(),

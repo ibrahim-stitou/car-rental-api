@@ -6,6 +6,7 @@ use App\Models\Reservation;
 use App\Models\Vehicle;
 use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Reservation\Repositories\ReservationRepository;
+use App\Services\PdfService;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class ReservationService
@@ -95,6 +96,24 @@ class ReservationService
         return $reservation;
     }
 
+    /**
+     * Generate the contract PDF exactly once and lock it. Once
+     * contract_generated_at is set, subsequent calls are a no-op — the
+     * stored file remains the source of truth even if the reservation
+     * is edited afterwards.
+     */
+    public function generateAndLockContract(Reservation $reservation): Reservation
+    {
+        if ($reservation->contract_generated_at) {
+            return $reservation;
+        }
+
+        app(PdfService::class)->saveReservationContractToMedia($reservation);
+        $reservation->update(['contract_generated_at' => now()]);
+
+        return $reservation->fresh();
+    }
+
     public function activate(string $id, array $data): Reservation
     {
         $reservation = $this->repository->findByIdOrFail($id);
@@ -112,7 +131,7 @@ class ReservationService
         $reservation = $this->repository->findByIdOrFail($id);
         $reservation->fill(array_merge($data, [
             'status'             => 'completed',
-            'actual_return_date' => now(),
+            'actual_return_date' => $data['actual_return_date'] ?? now(),
         ]));
 
         // Additional fees can be adjusted at checkout — recalculate the total so

@@ -29,6 +29,10 @@ class ReservationResource extends JsonResource
             'actual_return_date'  => $this->actual_return_date?->toISOString(),
             'pickup_location'     => $this->pickup_location,
             'return_location'     => $this->return_location,
+            'actual_return_location' => $this->actual_return_location,
+            'is_favorable'        => $this->is_favorable,
+            'closure_comment'     => $this->closure_comment,
+            'contract_generated_at' => $this->contract_generated_at?->toISOString(),
             'status'              => $this->status,
             'daily_rate'          => $this->daily_rate,
             'total_days'          => $this->total_days,
@@ -54,6 +58,7 @@ class ReservationResource extends JsonResource
             'contract'            => $this->getFirstMediaUrl('contract'),
             'pickup_photos'       => $this->getMediaByCollection('pickup_photos'),
             'return_photos'       => $this->getMediaByCollection('return_photos'),
+            'documents'           => $this->getMediaByCollection('documents'),
             'creator'             => $this->whenLoaded('creator', fn() => [
                 'id' => $this->creator->id, 'full_name' => $this->creator->full_name,
             ]),

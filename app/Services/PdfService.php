@@ -11,14 +11,27 @@ use NumberToWords\NumberToWords;
 
 class PdfService
 {
+    /**
+     * Shared dompdf options for the contract PDF. Font subsetting keeps
+     * output size sane (unsubsetted DejaVu Sans alone is ~1MB); remote
+     * fetching is off since all images are pre-embedded as base64 data URIs.
+     */
+    private const CONTRACT_PDF_OPTIONS = [
+        'defaultFont'             => 'DejaVu Sans',
+        'isHtml5ParserEnabled'    => true,
+        'isRemoteEnabled'         => false,
+        'isFontSubsettingEnabled' => true,
+        'dpi'                     => 96,
+        'enable_html5_parser'     => true,
+    ];
+
     public function generateReservationContract(Reservation $reservation, bool $download = false): Response
     {
-        $reservation->loadMissing(['agency', 'vehicle', 'client', 'creator']);
+        $data = $this->prepareContractData($reservation);
 
-        $pdf = Pdf::loadView('pdf.contract', compact('reservation'))
+        $pdf = Pdf::loadView('pdf.contract', $data)
             ->setPaper('A4', 'portrait')
-            ->setOption('defaultFont', 'DejaVu Sans')
-            ->setOption('isRemoteEnabled', false);
+            ->setOptions(self::CONTRACT_PDF_OPTIONS);
 
         $filename = 'contract-' . $reservation->reservation_number . '.pdf';
 
@@ -59,36 +72,61 @@ class PdfService
 
     public function saveReservationContractToMedia(Reservation $reservation): string
     {
-        $reservation->loadMissing(['agency', 'vehicle', 'client', 'creator']);
-
-        // Créer les données pour la vue
-        $data = [
-            'reservation' => $reservation,
-            'company' => Setting::where('group', 'company')->pluck('value', 'key')->toArray(),
-        ];
+        $data = $this->prepareContractData($reservation);
 
         $pdf = Pdf::loadView('pdf.contract', $data)
             ->setPaper('A4', 'portrait')
-            ->setOptions([
-                'defaultFont'              => 'DejaVu Sans',
-                'isHtml5ParserEnabled'     => true,
-                'isRemoteEnabled'          => true,
-                'isFontSubsettingEnabled'  => true,
-                'dpi'                      => 96,
-                'enable_html5_parser'      => true,
-            ]);
+            ->setOptions(self::CONTRACT_PDF_OPTIONS);
 
         $filename = 'contract-' . $reservation->reservation_number . '.pdf';
         $tmpPath  = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename;
 
         file_put_contents($tmpPath, $pdf->output());
 
-        $reservation->clearMediaCollection('contract');
+        // Never overwrite an already-generated contract — once validated, the
+        // stored file is the source of truth even if the reservation changes later.
         $reservation->addMedia($tmpPath)
             ->usingFileName($filename)
             ->toMediaCollection('contract');
 
         return $reservation->getFirstMediaUrl('contract');
+    }
+
+    private function prepareContractData(Reservation $reservation): array
+    {
+        $reservation->loadMissing(['agency', 'vehicle', 'client', 'creator', 'validator']);
+
+        $logoDataUrl = null;
+        if ($reservation->agency) {
+            $media = $reservation->agency->getFirstMedia('logo');
+            if ($media && file_exists($media->getPath())) {
+                $logoDataUrl = 'data:' . $media->mime_type . ';base64,'
+                    . base64_encode(file_get_contents($media->getPath()));
+            }
+        }
+
+        $signatureDataUrl = null;
+        $stampDataUrl = null;
+        if ($reservation->validator) {
+            $signatureMedia = $reservation->validator->getFirstMedia('signature');
+            if ($signatureMedia && file_exists($signatureMedia->getPath())) {
+                $signatureDataUrl = 'data:' . $signatureMedia->mime_type . ';base64,'
+                    . base64_encode(file_get_contents($signatureMedia->getPath()));
+            }
+            $stampMedia = $reservation->validator->getFirstMedia('stamp');
+            if ($stampMedia && file_exists($stampMedia->getPath())) {
+                $stampDataUrl = 'data:' . $stampMedia->mime_type . ';base64,'
+                    . base64_encode(file_get_contents($stampMedia->getPath()));
+            }
+        }
+
+        return [
+            'reservation'      => $reservation,
+            'company'          => Setting::where('group', 'company')->pluck('value', 'key')->toArray(),
+            'logoDataUrl'      => $logoDataUrl,
+            'signatureDataUrl' => $signatureDataUrl,
+            'stampDataUrl'     => $stampDataUrl,
+        ];
     }
 
     public function saveBillingDocumentToMedia(BillingDocument $document): string
