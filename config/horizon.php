@@ -83,7 +83,7 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class],
 
     /*
     |--------------------------------------------------------------------------
