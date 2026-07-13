@@ -90,7 +90,7 @@ class SendScheduledAlerts extends Command
             ->get();
 
         foreach ($pickups as $reservation) {
-            $this->notificationService->sendToAgency(
+            $this->notificationService->sendToAgencyByPermission(
                 $reservation->agency_id,
                 \App\Modules\Notification\Enums\NotificationType::RESERVATION_REMINDER_PICKUP,
                 [
@@ -100,7 +100,7 @@ class SendScheduledAlerts extends Command
                     'entity_id'   => $reservation->id,
                     'action_url'  => "/reservations/{$reservation->id}",
                 ],
-                ['admin', 'manager', 'agent']
+                ['view-reservation']
             );
             $count++;
         }
@@ -112,7 +112,7 @@ class SendScheduledAlerts extends Command
             ->get();
 
         foreach ($returns as $reservation) {
-            $this->notificationService->sendToAgency(
+            $this->notificationService->sendToAgencyByPermission(
                 $reservation->agency_id,
                 \App\Modules\Notification\Enums\NotificationType::RESERVATION_REMINDER_RETURN,
                 [
@@ -122,7 +122,7 @@ class SendScheduledAlerts extends Command
                     'entity_id'   => $reservation->id,
                     'action_url'  => "/reservations/{$reservation->id}",
                 ],
-                ['admin', 'manager', 'agent']
+                ['view-reservation']
             );
             $count++;
         }

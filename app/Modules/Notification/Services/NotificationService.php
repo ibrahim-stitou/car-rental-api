@@ -31,28 +31,74 @@ class NotificationService
     }
 
     /**
-     * Envoyer à tous les utilisateurs d'une agence.
+     * Envoyer à tous les utilisateurs d'une agence ayant l'un des rôles donnés.
+     * Rôles fournis dynamiquement (ex: choix manuel d'un admin) — un nom qui
+     * n'existe plus en base ne doit jamais faire planter l'envoi.
      */
     public function sendToAgency(string $agencyId, NotificationType $type, array $payload = [], array $roles = []): void
     {
         $query = User::where('agency_id', $agencyId)->where('is_active', true);
         if (!empty($roles)) {
-            // Roles are seeded under the "api" guard (this is a JWT-only API);
-            // config('auth.defaults.guard') is "web", which Spatie's role()
-            // scope falls back to when no guard is given, so it must be explicit.
-            $query->role($roles, 'api');
+            $query->whereHas('roles', fn ($r) => $r->where('guard_name', 'api')->whereIn('name', $roles));
         }
         $users = $query->get();
         $this->sendToUsers($users, $type, $payload);
     }
 
     /**
-     * Envoyer aux super-admins et admins.
+     * Envoyer à tous les utilisateurs d'une agence disposant d'au moins une
+     * des permissions données (via rôle ou permission directe). Les permissions
+     * métier (ex: view-reservation) sont le seul identifiant stable pour cibler
+     * "qui doit être notifié" — contrairement aux noms de rôles, qui sont
+     * entièrement dynamiques et peuvent être renommés/supprimés à tout moment.
+     */
+    public function sendToAgencyByPermission(string $agencyId, NotificationType $type, array $payload = [], array $permissions = []): void
+    {
+        $query = User::where('agency_id', $agencyId)->where('is_active', true);
+        $this->scopeAnyPermission($query, $permissions);
+        $users = $query->get();
+        $this->sendToUsers($users, $type, $payload);
+    }
+
+    /**
+     * Envoyer aux administrateurs : le rôle "super-admin" est le seul dont
+     * l'existence est garantie, complété dynamiquement par tout utilisateur
+     * disposant de la permission "manage-settings" (via un rôle quelconque).
      */
     public function sendToAdmins(NotificationType $type, array $payload = []): void
     {
-        $users = User::where('is_active', true)->role(['super-admin', 'admin'], 'api')->get();
+        $users = $this->adminUsersQuery()->get();
         $this->sendToUsers($users, $type, $payload);
+    }
+
+    /**
+     * Requête des administrateurs : rôle "super-admin" (seul rôle garanti)
+     * complété dynamiquement par tout utilisateur disposant de la permission
+     * "manage-settings" via un rôle quelconque.
+     */
+    public function adminUsersQuery()
+    {
+        return User::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereHas('roles', fn ($r) => $r->where('guard_name', 'api')->where('name', 'super-admin'));
+                $this->scopeAnyPermission($q, ['manage-settings'], 'or');
+            });
+    }
+
+    /**
+     * Restreint une requête aux utilisateurs ayant au moins une des permissions
+     * données (permission directe ou via un rôle), sans jamais lever d'exception
+     * si le nom de permission n'existe plus en base.
+     */
+    private function scopeAnyPermission($query, array $permissions, string $boolean = 'and'): void
+    {
+        if (empty($permissions)) {
+            return;
+        }
+        $query->where(function ($q) use ($permissions) {
+            $q->whereHas('permissions', fn ($p) => $p->where('guard_name', 'api')->whereIn('name', $permissions))
+              ->orWhereHas('roles.permissions', fn ($p) => $p->where('guard_name', 'api')->whereIn('name', $permissions));
+        }, boolean: $boolean === 'or' ? 'or' : 'and');
     }
 
     /**
@@ -154,7 +200,7 @@ class NotificationService
             'action_label'=> 'Voir la réservation',
             'meta'        => ['reservation_number' => $reservation->reservation_number, 'total_amount' => $reservation->total_amount],
         ];
-        $this->sendToAgency($reservation->agency_id, NotificationType::RESERVATION_CREATED, $payload, ['admin', 'manager', 'agent']);
+        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_CREATED, $payload, ['view-reservation']);
     }
 
     public function notifyReservationConfirmed(\App\Models\Reservation $reservation): void
@@ -183,7 +229,7 @@ class NotificationService
             'entity_id'   => $reservation->id,
             'action_url'  => "/reservations/{$reservation->id}",
         ];
-        $this->sendToAgency($reservation->agency_id, NotificationType::RESERVATION_ACTIVATED, $payload, ['admin', 'manager']);
+        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_ACTIVATED, $payload, ['view-reservation']);
     }
 
     public function notifyReservationCompleted(\App\Models\Reservation $reservation): void
@@ -197,7 +243,7 @@ class NotificationService
             'action_url'  => "/reservations/{$reservation->id}",
             'meta'        => ['total_amount' => $reservation->total_amount],
         ];
-        $this->sendToAgency($reservation->agency_id, NotificationType::RESERVATION_COMPLETED, $payload, ['admin', 'manager']);
+        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_COMPLETED, $payload, ['view-reservation']);
     }
 
     public function notifyReservationCancelled(\App\Models\Reservation $reservation): void
@@ -210,7 +256,7 @@ class NotificationService
             'entity_id'   => $reservation->id,
             'action_url'  => "/reservations/{$reservation->id}",
         ];
-        $this->sendToAgency($reservation->agency_id, NotificationType::RESERVATION_CANCELLED, $payload, ['admin', 'manager']);
+        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_CANCELLED, $payload, ['view-reservation']);
     }
 
     public function notifyReservationOverdue(\App\Models\Reservation $reservation): void
@@ -226,7 +272,7 @@ class NotificationService
             'force_mail'   => true,
             'meta'         => ['days_late' => $daysLate],
         ];
-        $this->sendToAgency($reservation->agency_id, NotificationType::RESERVATION_OVERDUE, $payload, ['admin', 'manager', 'agent']);
+        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_OVERDUE, $payload, ['view-reservation']);
     }
 
     // ══════════════════════════════════════════
@@ -247,7 +293,7 @@ class NotificationService
             'details'     => ['Véhicule' => $insurance->vehicle->full_name, 'Expiration' => $insurance->end_date->format('d/m/Y'), 'Jours restants' => $daysLeft],
         ];
         if ($insurance->vehicle->agency_id) {
-            $this->sendToAgency($insurance->vehicle->agency_id, NotificationType::INSURANCE_EXPIRING_SOON, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($insurance->vehicle->agency_id, NotificationType::INSURANCE_EXPIRING_SOON, $payload, ['view-insurance']);
         }
     }
 
@@ -263,7 +309,7 @@ class NotificationService
             'force_mail'  => true,
         ];
         if ($insurance->vehicle->agency_id) {
-            $this->sendToAgency($insurance->vehicle->agency_id, NotificationType::INSURANCE_EXPIRED, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($insurance->vehicle->agency_id, NotificationType::INSURANCE_EXPIRED, $payload, ['view-insurance']);
         }
         $this->sendToAdmins(NotificationType::INSURANCE_EXPIRED, $payload);
     }
@@ -286,7 +332,7 @@ class NotificationService
             'details'     => ['Véhicule' => $inspection->vehicle->full_name, 'Expiration' => $inspection->expiry_date->format('d/m/Y')],
         ];
         if ($inspection->vehicle->agency_id) {
-            $this->sendToAgency($inspection->vehicle->agency_id, NotificationType::INSPECTION_EXPIRING_SOON, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($inspection->vehicle->agency_id, NotificationType::INSPECTION_EXPIRING_SOON, $payload, ['view-technical-inspection']);
         }
     }
 
@@ -302,7 +348,7 @@ class NotificationService
             'force_mail'  => true,
         ];
         if ($inspection->vehicle->agency_id) {
-            $this->sendToAgency($inspection->vehicle->agency_id, NotificationType::INSPECTION_EXPIRED, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($inspection->vehicle->agency_id, NotificationType::INSPECTION_EXPIRED, $payload, ['view-technical-inspection']);
         }
     }
 
@@ -323,7 +369,7 @@ class NotificationService
             'force_mail'  => $daysLeft <= 7,
         ];
         if ($vignette->vehicle->agency_id) {
-            $this->sendToAgency($vignette->vehicle->agency_id, NotificationType::VIGNETTE_EXPIRING_SOON, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($vignette->vehicle->agency_id, NotificationType::VIGNETTE_EXPIRING_SOON, $payload, ['view-vignette']);
         }
     }
 
@@ -339,7 +385,7 @@ class NotificationService
             'force_mail'  => true,
         ];
         if ($vignette->vehicle->agency_id) {
-            $this->sendToAgency($vignette->vehicle->agency_id, NotificationType::VIGNETTE_EXPIRED, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($vignette->vehicle->agency_id, NotificationType::VIGNETTE_EXPIRED, $payload, ['view-vignette']);
         }
     }
 
@@ -358,7 +404,7 @@ class NotificationService
             'action_url'  => "/maintenances/{$maintenance->id}",
         ];
         if ($maintenance->vehicle->agency_id) {
-            $this->sendToAgency($maintenance->vehicle->agency_id, NotificationType::MAINTENANCE_SCHEDULED, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($maintenance->vehicle->agency_id, NotificationType::MAINTENANCE_SCHEDULED, $payload, ['view-maintenance']);
         }
     }
 
@@ -374,7 +420,7 @@ class NotificationService
             'force_mail'  => true,
         ];
         if ($maintenance->vehicle->agency_id) {
-            $this->sendToAgency($maintenance->vehicle->agency_id, NotificationType::MAINTENANCE_OVERDUE, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($maintenance->vehicle->agency_id, NotificationType::MAINTENANCE_OVERDUE, $payload, ['view-maintenance']);
         }
     }
 
@@ -389,7 +435,7 @@ class NotificationService
             'action_url'  => "/maintenances/{$maintenance->id}",
         ];
         if ($maintenance->vehicle->agency_id) {
-            $this->sendToAgency($maintenance->vehicle->agency_id, NotificationType::MAINTENANCE_COMPLETED, $payload, ['admin', 'manager']);
+            $this->sendToAgencyByPermission($maintenance->vehicle->agency_id, NotificationType::MAINTENANCE_COMPLETED, $payload, ['view-maintenance']);
         }
     }
 
@@ -407,7 +453,7 @@ class NotificationService
             'entity_id'   => $document->id,
             'action_url'  => "/billing/{$document->id}",
         ];
-        $this->sendToAgency($document->agency_id, NotificationType::BILLING_CREATED, $payload, ['admin', 'manager']);
+        $this->sendToAgencyByPermission($document->agency_id, NotificationType::BILLING_CREATED, $payload, ['view-billing']);
     }
 
     public function notifyBillingApproved(\App\Models\BillingDocument $document): void
@@ -435,7 +481,7 @@ class NotificationService
             'entity_id'   => $document->id,
             'action_url'  => "/billing/{$document->id}",
         ];
-        $this->sendToAgency($document->agency_id, NotificationType::BILLING_PAID, $payload, ['admin', 'manager']);
+        $this->sendToAgencyByPermission($document->agency_id, NotificationType::BILLING_PAID, $payload, ['view-billing']);
     }
 
     public function notifyBillingOverdue(\App\Models\BillingDocument $document): void
@@ -450,7 +496,7 @@ class NotificationService
             'action_url'  => "/billing/{$document->id}",
             'force_mail'  => true,
         ];
-        $this->sendToAgency($document->agency_id, NotificationType::BILLING_OVERDUE, $payload, ['admin', 'manager']);
+        $this->sendToAgencyByPermission($document->agency_id, NotificationType::BILLING_OVERDUE, $payload, ['view-billing']);
     }
 
     // ══════════════════════════════════════════
@@ -468,7 +514,7 @@ class NotificationService
             'action_url'  => "/clients/{$client->id}",
         ];
         if ($client->agency_id) {
-            $this->sendToAgency($client->agency_id, NotificationType::CLIENT_BLACKLISTED, $payload, ['admin', 'manager', 'agent']);
+            $this->sendToAgencyByPermission($client->agency_id, NotificationType::CLIENT_BLACKLISTED, $payload, ['view-client']);
         }
     }
 
@@ -484,7 +530,7 @@ class NotificationService
             'action_url'  => "/clients/{$client->id}",
         ];
         if ($client->agency_id) {
-            $this->sendToAgency($client->agency_id, NotificationType::CLIENT_LICENSE_EXPIRING, $payload, ['admin', 'manager', 'agent']);
+            $this->sendToAgencyByPermission($client->agency_id, NotificationType::CLIENT_LICENSE_EXPIRING, $payload, ['view-client']);
         }
     }
 

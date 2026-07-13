@@ -230,7 +230,7 @@ class NotificationController extends BaseController
         // Si aucune cible, envoyer aux admins
         if ($count === 0) {
             $this->service->sendToAdmins(NotificationType::SYSTEM_ALERT, $payload);
-            $count = \App\Models\User::where('is_active', true)->role(['super-admin', 'admin'], 'api')->count();
+            $count = $this->service->adminUsersQuery()->count();
         }
 
         return $this->success(['recipients' => $count], "Notification envoyée à {$count} utilisateur(s)");

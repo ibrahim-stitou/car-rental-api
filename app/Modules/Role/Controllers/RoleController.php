@@ -61,7 +61,7 @@ class RoleController extends BaseController
     public function destroy(string $id): JsonResponse
     {
         $role = Role::findOrFail($id);
-        if (in_array($role->name, ['super-admin', 'admin'])) {
+        if ($role->name === 'super-admin') {
             return $this->error('Cannot delete system roles', 403);
         }
         $role->delete();
