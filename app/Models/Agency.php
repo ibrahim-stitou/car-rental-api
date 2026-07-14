@@ -21,7 +21,7 @@ class Agency extends Model implements HasMedia, Auditable
     use HasFactory, HasUuid, SoftDeletes, InteractsWithMedia, HasMediaCollections, AuditableTrait;
 
     protected $fillable = [
-        'name', 'address', 'city', 'country', 'phone',
+        'name', 'address', 'city', 'country', 'phone', 'phone2',
         'email', 'is_active', 'manager_id',
     ];
 

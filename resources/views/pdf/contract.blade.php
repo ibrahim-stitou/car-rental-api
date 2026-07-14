@@ -5,405 +5,479 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Contrat de Location — {{ $reservation->reservation_number }}</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        @page { margin: 20px 24px 34px 24px; }
-        body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 10px; color: #1a1a1a; background: #fff; }
+        @font-face { font-family: 'Amiri'; src: url('{{ $arabicFontRegular }}') format('truetype'); font-weight: normal; }
+        @font-face { font-family: 'Amiri'; src: url('{{ $arabicFontBold }}') format('truetype'); font-weight: bold; }
 
-        .brand-footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 6.5px; color: #bbb; }
+        * { margin: 0; padding: 0; }
+        @page { margin: 14px 16px; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 8.4px; color: #000; }
 
-        .header { display: table; width: 100%; padding: 16px 0; border: 1px solid #1e3a5f; margin-bottom: 16px; }
-        .header-left { display: table-cell; width: 65%; vertical-align: middle; padding: 0 16px; }
-        .header-logo-img { max-height: 60px; max-width: 160px; }
-        .header-logo-text { font-size: 20px; font-weight: bold; color: #1e3a5f; letter-spacing: 1px; }
-        .header-agency { font-size: 9px; color: #555; line-height: 1.6; margin-top: 4px; }
-        .header-agency strong { font-size: 12px; color: #1e3a5f; display: block; }
-        .header-right { display: table-cell; width: 35%; vertical-align: middle; text-align: right; font-size: 10px; color: #333; padding: 0 16px; }
-        .header-right .title { font-size: 13px; font-weight: bold; color: #1e3a5f; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        td, th { vertical-align: top; padding: 0; }
 
-        .ref-bar { display: table; width: 100%; border: 1px solid #1e3a5f; border-top: none; margin-bottom: 16px; }
-        .ref-cell { display: table-cell; padding: 6px 12px; font-size: 11px; }
-        .ref-cell strong { color: #e85d04; font-size: 13px; }
-        .ref-cell.status { text-align: right; }
+        .ar {
+            font-family: 'Amiri', DejaVu Sans, sans-serif;
+            direction: rtl; unicode-bidi: bidi-override; text-align: right;
+            font-size: 9px;
+        }
 
-        .section { margin-bottom: 9px; }
-        .section-title { font-size: 10px; font-weight: bold; color: #fff; background: #1e3a5f; padding: 4px 10px; margin-bottom: 0; text-transform: uppercase; letter-spacing: 0.5px; }
-        .section-body { border: 1px solid #d0d7de; border-top: none; padding: 7px 12px; }
+        .outer { border: 1px solid #000; border-bottom: none; }
+        .outer:last-of-type { border-bottom: 1px solid #000; }
 
-        .grid-2 { display: table; width: 100%; }
-        .col { display: table-cell; width: 50%; vertical-align: top; padding-right: 16px; }
-        .col:last-child { padding-right: 0; padding-left: 8px; }
-        .field { margin-bottom: 5px; }
-        .field label { display: block; font-size: 8px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
-        .field value { display: block; font-size: 10px; font-weight: 600; color: #1a1a1a; }
+        /* ── header ───────────────────────────────────────────── */
+        .header-table td { padding: 8px 10px; }
+        .header-left { width: 66%; border-right: 1px solid #000; }
+        .header-logo-img { max-height: 46px; max-width: 140px; display: block; margin-bottom: 4px; }
+        .header-logo-text { font-size: 19px; font-weight: bold; color: #1a3a8f; letter-spacing: 0.5px; }
+        .header-agency-lines { font-size: 8px; color: #222; line-height: 1.55; margin-top: 2px; }
+        .header-right { width: 34%; text-align: center; font-size: 11px; font-style: italic; padding-top: 22px; }
 
-        .second-driver-empty { padding: 6px 12px; }
-        .second-driver-cross { text-align: center; padding: 2px 0; }
-        .second-driver-cross .cross-x { display: block; font-size: 20px; font-weight: bold; color: #c0392b; line-height: 1; }
-        .second-driver-cross .cross-label { display: block; margin-top: 2px; font-size: 8px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* ── ref bar ──────────────────────────────────────────── */
+        .refbar-table td { padding: 5px 10px; font-size: 9.5px; }
+        .refbar-left { width: 50%; border-right: 1px solid #000; }
+        .refbar-num { color: #c0392b; font-weight: bold; }
 
-        .depart-retour { width: 100%; border-collapse: collapse; }
-        .depart-retour th, .depart-retour td { border: 1px solid #d0d7de; padding: 6px 10px; font-size: 9px; text-align: left; }
-        .depart-retour th { background: #f0f4f8; color: #1e3a5f; text-transform: uppercase; letter-spacing: 0.5px; }
-        .depart-retour td.label { color: #888; width: 18%; }
+        /* ── main split ───────────────────────────────────────── */
+        .split-table td { padding: 0; }
+        .split-left { width: 50%; border-right: 1px solid #000; vertical-align: top; }
+        .split-right { width: 50%; vertical-align: top; }
 
-        .totals-table { width: 100%; border-collapse: collapse; }
-        .totals-table tr td { padding: 6px 10px; border-bottom: 1px solid #eee; }
-        .totals-table tr td:first-child { color: #555; }
-        .totals-table tr td:last-child { text-align: right; font-weight: 600; }
-        .totals-table .total-row td { font-size: 12px; font-weight: bold; color: #1e3a5f; border-top: 2px solid #1e3a5f; border-bottom: none; background: #f0f4f8; }
+        /* field rows (fr label | value | ar label) */
+        .frow-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .frow-label { width: 40%; white-space: nowrap; }
+        .frow-value { width: 34%; font-weight: bold; }
+        .frow-ar { width: 26%; }
 
-        .payment-row { display: table; width: 100%; margin-top: 8px; }
-        .payment-cell { display: table-cell; font-size: 9px; }
+        .subhead { background: #eef1f6; font-weight: bold; padding: 3px 8px; border-bottom: 1px solid #000; border-top: 1px solid #000; font-size: 8.6px; }
+        .subhead-ar { float: right; }
 
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 9px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge-confirmed { background: #d1fae5; color: #065f46; }
-        .badge-active { background: #dbeafe; color: #1e40af; }
-        .badge-completed { background: #e0e7ff; color: #3730a3; }
-        .badge-cancelled { background: #fee2e2; color: #991b1b; }
-        .badge-pending { background: #fef3c7; color: #92400e; }
+        .empty-block { padding: 10px 8px; text-align: center; }
+        .empty-block .x { font-size: 16px; font-weight: bold; color: #b02a2a; }
+        .empty-block .lbl { display: block; font-size: 7.5px; color: #8a2020; margin-top: 2px; }
 
-        .closure-box { margin-top: 8px; padding: 8px 10px; background: #f8f9fa; border-left: 3px solid #1e3a5f; font-size: 9px; color: #444; }
-        .closure-box .fav { font-weight: bold; }
-        .closure-box .fav.yes { color: #065f46; }
-        .closure-box .fav.no { color: #991b1b; }
+        .legal-block { padding: 8px; text-align: center; font-size: 7.6px; line-height: 1.55; border-bottom: 1px solid #ddd; }
+        .legal-block .ar { font-size: 8px; }
 
-        .signature-section { margin-top: 14px; display: table; width: 100%; }
-        .signature-box { display: table-cell; width: 50%; text-align: center; padding: 0 20px; vertical-align: bottom; }
-        .signature-stamp-img { max-height: 60px; max-width: 150px; margin-bottom: 4px; }
-        .signature-line { border-top: 1px solid #888; margin: 24px 20px 6px; }
-        .signature-line.has-image { margin-top: 4px; }
-        .signature-label { font-size: 9px; color: #555; }
+        .sig-row-table td { padding: 5px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .sig-row-line { border-bottom: 1px solid #999; height: 16px; }
 
-        .footer { margin-top: 12px; border-top: 1px solid #d0d7de; padding-top: 6px; text-align: center; font-size: 8px; color: #aaa; line-height: 1.5; }
+        /* ── vehicle top rows ─────────────────────────────────── */
+        .veh-two-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; width: 50%; font-size: 8.4px; }
+        .veh-two-table .ar-sub { font-size: 7px; color: #555; }
 
+        /* ── depart/retour ────────────────────────────────────── */
+        .dr-table { border-top: 1px solid #000; }
+        .dr-table td, .dr-table th { border: 1px solid #999; padding: 3px 6px; font-size: 8px; text-align: center; }
+        .dr-table th { background: #eef1f6; font-weight: bold; }
+        .dr-table td.lbl { text-align: left; color: #444; width: 20%; }
+        .dr-ar { font-size: 7.4px; font-weight: normal; }
+
+        /* ── facturation ──────────────────────────────────────── */
+        .fact-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .fact-table .fl { width: 46%; }
+        .fact-table .fv { width: 34%; }
+        .fact-table .fa { width: 20%; }
+
+        /* ── etat vehicule ────────────────────────────────────── */
+        .etat-wrap { padding: 6px 8px; border-bottom: 1px solid #ddd; }
+        .chk { display: inline-block; width: 9px; height: 9px; border: 1px solid #333; text-align: center; line-height: 8px; font-size: 8px; margin-right: 2px; }
+        .chk.on::after { content: "X"; }
+        .car-diagram-table td { padding: 2px; text-align: center; vertical-align: middle; }
+        .car-box { border: 1px solid #999; height: 34px; }
+        .fuel-gauge { border: 1px solid #999; border-radius: 50%; width: 34px; height: 34px; margin: 0 auto; text-align: center; line-height: 34px; font-size: 6px; color: #888; }
+
+        .modereg-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+
+        .footer-note { text-align: center; font-size: 6.5px; color: #999; padding: 4px; }
+
+        /* ── page 2 ───────────────────────────────────────────── */
         .page-break { page-break-before: always; }
-        .cgl-title { text-align: center; margin-bottom: 18px; }
-        .cgl-title h1 { font-size: 15px; font-weight: bold; color: #1e3a5f; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #1e3a5f; border-radius: 20px; display: inline-block; padding: 8px 24px; }
-        .cgl-intro { font-size: 9px; color: #555; margin-bottom: 16px; line-height: 1.5; }
-        .cgl-columns { display: table; width: 100%; }
-        .cgl-col { display: table-cell; width: 50%; vertical-align: top; padding-right: 14px; }
-        .cgl-col:last-child { padding-right: 0; padding-left: 14px; }
-        .cgl-article { margin-bottom: 10px; }
-        .cgl-article h4 { font-size: 9px; color: #1e3a5f; margin-bottom: 3px; }
-        .cgl-article p { font-size: 7.5px; color: #555; line-height: 1.5; text-align: justify; }
+        .cgl-title { text-align: center; margin: 6px 0 14px; }
+        .cgl-title h1 { font-size: 14px; font-weight: bold; border: 1.5px solid #000; border-radius: 20px; display: inline-block; padding: 7px 26px; letter-spacing: 0.5px; }
+        .cgl-intro { font-size: 8.6px; margin-bottom: 14px; line-height: 1.5; }
+        .cgl-columns td { width: 50%; vertical-align: top; padding: 0 10px; }
+        .cgl-article { margin-bottom: 9px; }
+        .cgl-article h4 { font-size: 8.8px; font-weight: bold; margin-bottom: 3px; }
+        .cgl-article p { font-size: 7.8px; line-height: 1.48; text-align: justify; }
     </style>
 </head>
 <body>
 
-<div class="brand-footer">Généré par MyFleet-Control (myfleet-control.com)</div>
+{{-- ══════════════════════════ PAGE 1 ══════════════════════════ --}}
 
-{{-- HEADER --}}
-<div class="header">
-    <div class="header-left">
-        @if($logoDataUrl)
-            <img src="{{ $logoDataUrl }}" class="header-logo-img" alt="Logo">
-        @else
-            <div class="header-logo-text">{{ $reservation->agency->name ?? config('app.name') }}</div>
-        @endif
-        <div class="header-agency">
-            @if($reservation->agency)
-                <strong>{{ $reservation->agency->name }}</strong>
-                {{ $reservation->agency->address ?? '' }}<br>
-                {{ $reservation->agency->phone ?? '' }} @if($reservation->agency->email) · {{ $reservation->agency->email }} @endif
+<table class="header-table outer">
+    <tr>
+        <td class="header-left">
+            @if($logoDataUrl)
+                <img src="{{ $logoDataUrl }}" class="header-logo-img" alt="Logo">
+            @else
+                <div class="header-logo-text">{{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
             @endif
-        </div>
-    </div>
-    <div class="header-right">
-        <div class="title">Location de voiture sans chauffeur</div>
-        <div style="margin-top:4px;">Contrat de location</div>
-    </div>
-</div>
-
-{{-- REF BAR --}}
-<div class="ref-bar">
-    <div class="ref-cell">Locataire N° : <strong>{{ $reservation->reservation_number }}</strong></div>
-    <div class="ref-cell status">
-        Statut : <span class="badge badge-{{ $reservation->status }}">{{ ucfirst($reservation->status) }}</span>
-        &nbsp; Généré le {{ now()->format('d/m/Y à H:i') }}
-    </div>
-</div>
-
-{{-- PARTIES --}}
-<div class="section">
-    <div class="grid-2">
-        <div class="col" style="padding-right: 0;">
-            <div class="section-title">Locataire</div>
-            <div class="section-body">
-                <div class="field">
-                    <label>Nom et prénom</label>
-                    <value>{{ $reservation->client->full_name ?? trim(($reservation->client->first_name ?? '') . ' ' . ($reservation->client->last_name ?? '')) }}</value>
-                </div>
-                @if($reservation->client)
-                    <div class="field">
-                        <label>Adresse</label>
-                        <value>{{ $reservation->client->address ?? '—' }}</value>
-                    </div>
-                    <div class="field">
-                        <label>Téléphone</label>
-                        <value>{{ $reservation->client->phone ?? '—' }}</value>
-                    </div>
-                    <div class="field">
-                        <label>N° Permis de conduire</label>
-                        <value>{{ $reservation->client->driver_license_number ?? '—' }}</value>
-                    </div>
-                    <div class="field">
-                        <label>CIN / Passeport</label>
-                        <value>{{ $reservation->client->national_id ?? $reservation->client->passport_number ?? '—' }}</value>
-                    </div>
+            <div class="header-agency-lines">
+                @if($reservation->agency?->address ?? $company['address'] ?? null)
+                    {{ $reservation->agency->address ?? $company['address'] }}<br>
+                @endif
+                @if($reservation->agency?->phone ?? $company['phone'] ?? null)
+                    Tél/Fax: {{ $reservation->agency->phone ?? $company['phone'] }}<br>
+                @endif
+                @if($reservation->agency?->phone2 ?? $company['phone2'] ?? null)
+                    GSM: {{ $reservation->agency->phone2 ?? $company['phone2'] }}<br>
+                @endif
+                @if($reservation->agency?->email ?? $company['email'] ?? null)
+                    E.mail: {{ $reservation->agency->email ?? $company['email'] }}
                 @endif
             </div>
-        </div>
-        <div class="col" style="padding-left: 0;">
-            <div class="section-title">Véhicule</div>
-            <div class="section-body">
-                <div class="field">
-                    <label>Marque / Modèle</label>
-                    <value>{{ $reservation->vehicle->brand ?? '' }} {{ $reservation->vehicle->model ?? '' }}</value>
-                </div>
-                <div class="field">
-                    <label>Immatriculation</label>
-                    <value>{{ $reservation->vehicle->registration_number ?? $reservation->vehicle->license_plate ?? '—' }}</value>
-                </div>
-                <div class="field">
-                    <label>Carburant</label>
-                    <value>{{ ucfirst(str_replace('_', ' ', $reservation->fuel_level_pickup ?? '—')) }}</value>
-                </div>
-                <div class="field">
-                    <label>Caution</label>
-                    <value>{{ number_format($reservation->deposit_amount ?? 0, 2) }} MAD</value>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+        </td>
+        <td class="header-right">
+            Location de voiture<br>sans chauffeur
+        </td>
+    </tr>
+</table>
 
-{{-- SECOND CONDUCTEUR — always rendered so an empty box can never be filled in by hand afterwards --}}
-@php $hasSecondDriver = $reservation->secondDriver || $reservation->second_driver_name; @endphp
-<div class="section">
-    <div class="section-title">Second conducteur agréé</div>
-    <div class="section-body {{ $hasSecondDriver ? '' : 'second-driver-empty' }}">
-        @if($hasSecondDriver)
-            <div class="grid-2">
-                <div class="col">
-                    <div class="field">
-                        <label>Nom et prénom</label>
-                        <value>{{ $reservation->secondDriver->full_name ?? $reservation->second_driver_name }}</value>
-                    </div>
-                </div>
-                <div class="col">
-                    <div class="field">
-                        <label>N° Permis de conduire</label>
-                        <value>{{ $reservation->secondDriver->driver_license_number ?? $reservation->second_driver_license ?? '—' }}</value>
-                    </div>
-                </div>
-                <div class="col">
-                    <div class="field">
-                        <label>Téléphone</label>
-                        <value>{{ $reservation->secondDriver->phone ?? $reservation->second_driver_phone ?? '—' }}</value>
-                    </div>
-                </div>
-            </div>
-        @else
-            <div class="second-driver-cross">
-                <span class="cross-x">✕</span>
-                <span class="cross-label">Aucun second conducteur agréé sur ce contrat</span>
-            </div>
-        @endif
-    </div>
-</div>
+<table class="refbar-table outer">
+    <tr>
+        <td class="refbar-left"><b>LOCATAIRE -N°:</b> <span class="refbar-num">{{ $reservation->reservation_number }}</span></td>
+        <td><b>VEHICULE</b></td>
+    </tr>
+</table>
 
-{{-- DEPART / RETOUR --}}
-<div class="section">
-    <div class="section-title">Période de location</div>
-    <div class="section-body" style="padding: 0; border: none;">
-        <table class="depart-retour">
-            <tr>
-                <th style="width:18%;"></th>
-                <th>Départ</th>
-                <th>Retour {{ $reservation->actual_return_date ? '(effectif)' : '(prévu)' }}</th>
-            </tr>
-            <tr>
-                <td class="label">Date</td>
-                <td>{{ $reservation->pickup_date->format('d/m/Y') }}</td>
-                <td>{{ ($reservation->actual_return_date ?? $reservation->return_date)->format('d/m/Y') }}</td>
-            </tr>
-            <tr>
-                <td class="label">Heure</td>
-                <td>{{ $reservation->pickup_date->format('H:i') }}</td>
-                <td>{{ ($reservation->actual_return_date ?? $reservation->return_date)->format('H:i') }}</td>
-            </tr>
-            <tr>
-                <td class="label">Km</td>
-                <td>{{ $reservation->initial_mileage !== null ? number_format($reservation->initial_mileage) : '—' }}</td>
-                <td>{{ $reservation->final_mileage !== null ? number_format($reservation->final_mileage) : '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Lieu</td>
-                <td>{{ $reservation->pickup_location ?? '—' }}</td>
-                <td>{{ $reservation->actual_return_location ?? $reservation->return_location ?? $reservation->pickup_location ?? '—' }}</td>
-            </tr>
-        </table>
-        @if($reservation->status === 'completed')
-            <div class="closure-box">
-                @if($reservation->is_favorable !== null)
-                    Avis de clôture :
-                    <span class="fav {{ $reservation->is_favorable ? 'yes' : 'no' }}">
-                        {{ $reservation->is_favorable ? 'Favorable' : 'Non favorable' }}
-                    </span><br>
+@php
+    $client = $reservation->client;
+    $vehicle = $reservation->vehicle;
+    $second = $reservation->secondDriver;
+    $hasSecond = $second || $reservation->second_driver_name;
+    $pickup = $reservation->pickup_date;
+    $returnPlanned = $reservation->return_date;
+    $returnActual = $reservation->actual_return_date;
+    $payMethod = $reservation->payment_method;
+@endphp
+
+<table class="split-table outer">
+    <tr>
+        {{-- ═══ LEFT: LOCATAIRE ═══ --}}
+        <td class="split-left">
+
+            <table class="frow-table">
+                <tr>
+                    <td class="frow-label">Nom :</td>
+                    <td class="frow-value">{{ $client?->last_name ?? '—' }}</td>
+                    <td class="frow-ar ar">الاسم العائلي :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Prénom :</td>
+                    <td class="frow-value">{{ $client?->first_name ?? '—' }}</td>
+                    <td class="frow-ar ar">الاسم الشخصي :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Adresse :</td>
+                    <td class="frow-value">{{ $client?->address ?? '—' }}</td>
+                    <td class="frow-ar ar">العنوان :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Tél :</td>
+                    <td class="frow-value">{{ $client?->phone ?? '—' }}</td>
+                    <td class="frow-ar ar">الهاتف :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Permis de Conduire N° :</td>
+                    <td class="frow-value">{{ $client?->driving_license_number ?? '—' }}</td>
+                    <td class="frow-ar ar">رخصة رقم :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Délivré le :</td>
+                    <td class="frow-value">{{ $client?->license_issue_date?->format('d/m/Y') ?? '—' }} @if($client?->license_issue_place) à {{ $client->license_issue_place }} @endif</td>
+                    <td class="frow-ar ar">منح في :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Date et Lieu de Naissance :</td>
+                    <td class="frow-value">{{ $client?->date_of_birth?->format('d/m/Y') ?? '—' }} @if($client?->birth_place) à {{ $client->birth_place }} @endif</td>
+                    <td class="frow-ar ar">تاريخ ومكان الازدياد :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">N° Passeport/CIN :</td>
+                    <td class="frow-value">{{ $client?->id_number ?? '—' }}</td>
+                    <td class="frow-ar ar">رقم جواز السفر / بطاقة التعريف :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Autre Conducteur Agréé :</td>
+                    <td class="frow-value">{{ $second ? trim($second->last_name . ' ' . $second->first_name) : ($reservation->second_driver_name ?? '—') }}</td>
+                    <td class="frow-ar ar">السائق المعتمد الثاني :</td>
+                </tr>
+                @if($second)
+                <tr>
+                    <td class="frow-label">Date et Lieu de Naissance :</td>
+                    <td class="frow-value">{{ $second->date_of_birth?->format('d/m/Y') ?? '—' }} @if($second->birth_place) à {{ $second->birth_place }} @endif</td>
+                    <td class="frow-ar ar">تاريخ ومكان الازدياد :</td>
+                </tr>
                 @endif
-                @if($reservation->closure_comment)
-                    <strong>Commentaire :</strong> {{ $reservation->closure_comment }}
-                @endif
+                <tr>
+                    <td class="frow-label">Permis de Conduire N° :</td>
+                    <td class="frow-value">{{ $second?->driving_license_number ?? $reservation->second_driver_license ?? '—' }}</td>
+                    <td class="frow-ar ar">رخصة رقم :</td>
+                </tr>
+                <tr>
+                    <td class="frow-label">Observations et Réserve :</td>
+                    <td class="frow-value" colspan="2" style="font-weight:normal;">{{ $reservation->notes ?? '—' }}</td>
+                </tr>
+            </table>
+
+            <div class="legal-block">
+                Le Client est seul responsable des délits et contraventions des circulations.<br>
+                <span class="ar">الزبون هو المسؤول الوحيد عن أي حادثة أو غرامة مالية عن أي مخالفة مرتكبة.</span><br>
+                J'ai lu et accepte les conditions stipulées ci-contre et au verso<br>
+                <span class="ar">اطلعت و وافقت على جميع الشروط المذكورة أعلاه وخلف العقد</span>
             </div>
-        @endif
-    </div>
-</div>
 
-{{-- FINANCIAL --}}
-<div class="section">
-    <div class="section-title">Facturation</div>
-    <div class="section-body">
-        <table class="totals-table">
-            <tr>
-                <td>Tarif journalier</td>
-                <td>{{ number_format($reservation->daily_rate, 2) }} MAD</td>
-            </tr>
-            <tr>
-                <td>Nombre de jours</td>
-                <td>{{ $reservation->total_days ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td>Sous-total</td>
-                <td>{{ number_format($reservation->subtotal ?? 0, 2) }} MAD</td>
-            </tr>
-            @if(($reservation->discount_percentage ?? 0) > 0)
-            <tr>
-                <td>Remise ({{ $reservation->discount_percentage }}%)</td>
-                <td>- {{ number_format($reservation->discount_amount ?? 0, 2) }} MAD</td>
-            </tr>
-            @endif
-            @if(($reservation->additional_fees ?? 0) > 0)
-            <tr>
-                <td>Frais supplémentaires</td>
-                <td>{{ number_format($reservation->additional_fees, 2) }} MAD</td>
-            </tr>
-            @endif
-            <tr class="total-row">
-                <td>TOTAL</td>
-                <td>{{ number_format($reservation->total_amount ?? 0, 2) }} MAD</td>
-            </tr>
-        </table>
-        <div class="payment-row">
-            <div class="payment-cell">Mode de règlement : <strong>{{ ucfirst(str_replace('_', ' ', $reservation->payment_method ?? '—')) }}</strong></div>
-            <div class="payment-cell" style="text-align:right;">Statut paiement : <strong>{{ ucfirst($reservation->payment_status ?? '—') }}</strong></div>
-        </div>
-        @if($reservation->notes)
-        <div style="margin-top:10px; padding:8px; background:#f8f9fa; border-left:3px solid #1e3a5f; font-size:9px; color:#555;">
-            <strong>Notes :</strong> {{ $reservation->notes }}
-        </div>
-        @endif
-    </div>
-</div>
+            <table class="sig-row-table">
+                <tr>
+                    <td style="width:60%;">Signature de client :<div class="sig-row-line"></div></td>
+                    <td class="ar" style="width:40%;">توقيع الزبون :</td>
+                </tr>
+                <tr>
+                    <td>Signature de l'agent :<div class="sig-row-line"></div></td>
+                    <td class="ar">توقيع الوكيل :</td>
+                </tr>
+                <tr>
+                    <td>Livrée par :<div class="sig-row-line"></div></td>
+                    <td class="ar">سلمت من طرف :</td>
+                </tr>
+                <tr>
+                    <td>Livrée par :<div class="sig-row-line"></div></td>
+                    <td class="ar">سلمت من طرف :</td>
+                </tr>
+            </table>
 
-{{-- SIGNATURES --}}
-<div class="signature-section">
-    <div class="signature-box">
-        <div class="signature-line"></div>
-        <div class="signature-label">
-            <strong>Signature du client</strong><br>
-            {{ $reservation->client->full_name ?? '' }}
-        </div>
-    </div>
-    <div class="signature-box">
-        @if($stampDataUrl || $signatureDataUrl)
-            @if($stampDataUrl)<img src="{{ $stampDataUrl }}" class="signature-stamp-img" alt="Cachet">@endif
-            @if($signatureDataUrl)<img src="{{ $signatureDataUrl }}" class="signature-stamp-img" alt="Signature">@endif
-            <div class="signature-line has-image"></div>
-        @else
-            <div class="signature-line"></div>
-        @endif
-        <div class="signature-label">
-            <strong>Cachet &amp; signature de l'agent</strong><br>
-            {{ $reservation->validator->full_name ?? $reservation->agency->name ?? '' }}
-        </div>
-    </div>
-</div>
+        </td>
 
-{{-- FOOTER --}}
-<div class="footer">
-    Le locataire reconnaît avoir reçu le véhicule en bon état et accepte les conditions générales de location au verso (page suivante).<br>
-    Document généré le {{ now()->format('d/m/Y à H:i') }} — {{ $reservation->agency->name ?? config('app.name') }}
-</div>
+        {{-- ═══ RIGHT: VEHICULE ═══ --}}
+        <td class="split-right">
 
-{{-- PAGE 2 — CONDITIONS GENERALES --}}
+            <table class="veh-two-table">
+                <tr>
+                    <td>Marque : <b>{{ $vehicle?->brand ?? '—' }}</b><br><span class="ar-sub ar">علامة</span></td>
+                    <td>Type : <b>{{ $vehicle?->model ?? '—' }}</b><br><span class="ar-sub ar">صنف</span></td>
+                </tr>
+                <tr>
+                    <td>Matricule : <b>{{ $vehicle?->registration_number ?? '—' }}</b><br><span class="ar-sub ar">رقم اللوحة</span></td>
+                    <td>Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b><br><span class="ar-sub ar">وقود</span></td>
+                </tr>
+            </table>
+
+            <table class="dr-table">
+                <tr>
+                    <th style="width:20%;"></th>
+                    <th>Départ <span class="dr-ar ar">الانطلاق</span></th>
+                    <th>Retour <span class="dr-ar ar">العودة</span></th>
+                </tr>
+                <tr>
+                    <td class="lbl">Date <span class="dr-ar ar">التاريخ</span></td>
+                    <td>{{ $pickup?->format('d/m/Y') ?? '—' }}</td>
+                    <td>{{ ($returnActual ?? $returnPlanned)?->format('d/m/Y') ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl">Heure <span class="dr-ar ar">الساعة</span></td>
+                    <td>{{ $pickup?->format('H:i') ?? '—' }}</td>
+                    <td>{{ ($returnActual ?? $returnPlanned)?->format('H:i') ?? '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl">Km <span class="dr-ar ar">كيلومتر</span></td>
+                    <td>{{ $reservation->initial_mileage !== null ? number_format($reservation->initial_mileage) : '—' }}</td>
+                    <td>{{ $reservation->final_mileage !== null ? number_format($reservation->final_mileage) : '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl">Lieu <span class="dr-ar ar">المكان</span></td>
+                    <td>{{ $reservation->pickup_location ?? '—' }}</td>
+                    <td>{{ $reservation->actual_return_location ?? $reservation->return_location ?? $reservation->pickup_location ?? '—' }}</td>
+                </tr>
+            </table>
+
+            <div class="subhead">Facturation (Livraison) <span class="subhead-ar ar">فاتورة (التسليم)</span></div>
+            <table class="fact-table">
+                <tr>
+                    <td class="fl">Journée(s) :</td>
+                    <td class="fv">{{ $reservation->total_days ?? '—' }} x {{ number_format($reservation->daily_rate ?? 0, 2) }}</td>
+                    <td class="fa ar">الأيام :</td>
+                </tr>
+                <tr>
+                    <td class="fl">Divers :</td>
+                    <td class="fv">{{ ($reservation->additional_fees ?? 0) > 0 ? number_format($reservation->additional_fees, 2) : 'x' }}</td>
+                    <td class="fa ar">مختلفة :</td>
+                </tr>
+                <tr>
+                    <td class="fl">Total H.T. :</td>
+                    <td class="fv"><b>{{ number_format($reservation->subtotal ?? 0, 2) }}</b></td>
+                    <td class="fa ar">المجموع بدون الضريبة :</td>
+                </tr>
+                <tr>
+                    <td class="fl">T.V.A % :</td>
+                    <td class="fv">{{ $company['tva_rate'] ?? '—' }}</td>
+                    <td class="fa ar">الضريبة :</td>
+                </tr>
+                <tr>
+                    <td class="fl">Total T.T.C. :</td>
+                    <td class="fv"><b>{{ number_format($reservation->total_amount ?? 0, 2) }}</b></td>
+                    <td class="fa ar">المجموع مع الضريبة :</td>
+                </tr>
+            </table>
+
+            <div class="subhead">État du Véhicule <span class="subhead-ar ar">حالة السيارة</span></div>
+            <div class="etat-wrap">
+                <span class="chk"></span> Griffe &nbsp;
+                <span class="chk"></span> Rayure &nbsp;
+                <span class="chk"></span> Accident &nbsp;
+                <span class="chk"></span> Choc
+                <table class="car-diagram-table">
+                    <tr>
+                        <td style="width:70%;"><div class="car-box"></div></td>
+                        <td style="width:30%;">
+                            <div class="fuel-gauge">E&nbsp;&nbsp;&nbsp;F</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <table class="sig-row-table">
+                <tr>
+                    <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
+                    <td class="ar" style="width:40%;">توقيع الزبون :</td>
+                </tr>
+            </table>
+
+            <div class="subhead">Mode de Règlement <span class="subhead-ar ar">طريقة الأداء</span></div>
+            <table class="modereg-table">
+                <tr>
+                    <td style="width:50%;">
+                        <span class="chk {{ $payMethod === 'check' ? 'on' : '' }}"></span> Chèque
+                    </td>
+                    <td class="ar" style="width:50%;">نقدا <span class="chk {{ $payMethod === 'cash' ? 'on' : '' }}"></span> Espèce</td>
+                </tr>
+                <tr>
+                    <td colspan="2">Référence : — <span class="ar" style="float:right;">المرجع :</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Date : {{ now()->format('d/m/Y') }} <span class="ar" style="float:right;">التاريخ :</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2">Retour Présence à bord : {{ $returnActual?->format('d/m/Y') ?? '—' }} <span class="ar" style="float:right;">الرجوع النهائي :</span></td>
+                </tr>
+            </table>
+
+            <table class="sig-row-table">
+                <tr>
+                    <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
+                    <td class="ar" style="width:40%;">توقيع الزبون :</td>
+                </tr>
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+<div class="footer-note">Document généré le {{ now()->format('d/m/Y à H:i') }} — {{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
+
+{{-- ══════════════════════════ PAGE 2 — CONDITIONS GENERALES ══════════════════════════ --}}
 <div class="page-break"></div>
-<div class="cgl-title"><h1>Conditions générales de location</h1></div>
+
+<div class="cgl-title"><h1>CONDITIONS GENERALES DE LOCATION</h1></div>
 <div class="cgl-intro">
-    Le présent contrat a été établi et prend date comme indiqué au recto. Il engage le loueur (l'agence)
-    et la personne ou société qui signe ce contrat, désignée ci-après « le locataire ».
+    Le present contrat a été etabli et prend date comme indiqué au verso. il engage qui sera appelé le loueur et la personne Société
+    ou Compagnie par qui est signé ce contrat, qui sera dénommée " le locataire"
 </div>
-<div class="cgl-columns">
-    <div class="cgl-col">
-        <div class="cgl-article">
-            <h4>Art. 1 — Utilisation du véhicule</h4>
-            <p>Le locataire s'engage à ne pas laisser conduire le véhicule par d'autres personnes que lui-même
-            ou celles agréées par le loueur, et à n'utiliser le véhicule que pour ses besoins personnels. Il est
-            interdit de participer à toute compétition, d'utiliser le véhicule à des fins illicites ou pour le
-            transport de marchandises, ainsi que de sous-louer le véhicule sans l'accord du loueur.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 2 — État du véhicule</h4>
-            <p>La voiture est livrée en parfait état de marche et de propreté. Elle sera rendue dans le même
-            état ; à défaut, le locataire devra régler les frais de nettoyage et de remise en état. En cas de
-            détérioration anormale, le locataire s'engage à en assumer le coût de réparation.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 3 — Essence et entretien</h4>
-            <p>Le carburant est à la charge du locataire. Le locataire doit vérifier régulièrement les niveaux
-            d'huile et d'eau ainsi que la pression des pneus, et signaler immédiatement toute anomalie constatée.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 4 — Réparations</h4>
-            <p>L'usure mécanique normale est à la charge du loueur. Toute réparation nécessitée par une
-            négligence du locataire sera à sa charge et exécutée par un garage agréé par le loueur.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 5 — Assurance</h4>
-            <p>Le véhicule est couvert par une assurance responsabilité civile. Le locataire reste responsable
-            de la franchise applicable en cas de sinistre, ainsi que de tout dommage exclu des garanties souscrites.</p>
-        </div>
-    </div>
-    <div class="cgl-col">
-        <div class="cgl-article">
-            <h4>Art. 6 — Location, caution, prolongation</h4>
-            <p>Les prix de location ainsi que la caution sont payables d'avance. La caution ne peut servir, en
-            aucun cas, au locataire pour se libérer du montant de la location en cours. Toute prolongation doit
-            être accordée au préalable par le loueur.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 7 — Rapatriement du véhicule</h4>
-            <p>Le locataire s'interdit formellement d'abandonner le véhicule. En cas d'impossibilité matérielle
-            de le restituer, celui-ci sera rapatrié aux frais et par les soins du loueur, la location restant due
-            jusqu'au retour effectif du véhicule.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 8 — Documents du véhicule</h4>
-            <p>Le locataire remettra, dès la fin de la location, la carte grise et tous les documents nécessaires
-            à la circulation. En cas de perte, il devra acquitter les frais de duplicata ainsi que l'immobilisation
-            du véhicule en résultant.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 9 — Responsabilité</h4>
-            <p>Le locataire demeure seul responsable des amendes, contraventions et procès-verbaux établis
-            contre lui pendant toute la durée de la location.</p>
-        </div>
-        <div class="cgl-article">
-            <h4>Art. 10 — Compétence</h4>
-            <p>En cas de contestation, seuls les tribunaux du ressort de l'agence loueuse sont compétents. Les
-            frais de timbre et d'enregistrement restent à la charge du locataire.</p>
-        </div>
-    </div>
-</div>
+
+<table class="cgl-columns">
+    <tr>
+        <td>
+            <div class="cgl-article">
+                <h4>Art. 1- UTILISATION DE LA VOITURE-</h4>
+                <p>Le locataire s'engage à ne pas laisser conduire la voiture par d'autres personnes que lui même ou celles agréées
+                par le loueur et dont il se porte garant, et à réutiliser le véhicule que pour ses besoins personnels. il est interdit
+                de participer à toute compétition, quelle que soit, et d'utiliser le véhicule des fins illicites ou des transports de
+                marchandises. Le locataire s'engage à ne pas solliciter directement des documents douaniers- Il est interdit au
+                locataire de surcharger le véhicule loué en transportant un nombre de passagers supérieur à celui porté sur le
+                contrat, sous peie d'être déchu de l'Assurances.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 2- ETAT DE LA VOITURE-</h4>
+                <p>La voiture est livrée en parfait état de marche et de propreté. Les compteurs et leurs prises sont plombés, et les
+                plombs ne pourront être enlevés ou volés sous peine de devoir payer la location sur la base de 500 Kilomètres par
+                jour. La voiture sera rendue dans le même état de propreté; a défaut le locataire devra acquitter le montant de ces
+                nettoyage et remises en état les 5 pneus sont en bon état sans coupures, l'usure et normale. en cas de détérioration
+                et de l'un d'eux pour une cause autre que l'usure normale. Le locataire s'engage à le remplacer immédiatement par un
+                pneu neuf de mêmes dimensions ou d'en payer le montant.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 3- ESSENCE ET HUILE-</h4>
+                <p>L'essence est à la charge du client. Le locataire doit vérifier en permanence les niveaux d'huile et d'eau, et
+                vérifier les niveaux de la boîte de vitesse et du pont arrière tous les 1.000 Kilomètre. Il justifiera de ces
+                travaux par les factures correspondantes (qui lui seront remboursées) sous peine d'avoir à payer une indemnité
+                pour usure anormale.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 4- ENTRETIEN ET REPARATION-</h4>
+                <p>L'usure mécanique normale est à la charge du loueur. Toutes les réparations provenant, soit d'une usure
+                anormale, soit d'une négligence de la part du locataire ou d'une cause accindentelle, seront à la charge et
+                exécutées par ses soins. Dans le cas ou le véhicule serait immobilisé en dehors de la région, les réparations
+                qu'elles soient dues a l'usure normale ou à une cause accidentelle, ne seront exécutées qu'après accord
+                télégraphique du loueur ou par l'Agent régional de la marque de véhicule. Elles devront faire l'objet d'une
+                facture acquittée et très détaillée. Les pièces défectueuses remplacées devront être présentées avec la facture
+                acquittée, En aucun cas et n'a aucune circonstance, le locataire ne pourra réclamer des dommages et intérêts,
+                soit pour le retard de la remise de la voiture, ou annulation de la location, soit pour immobilisation dans le
+                cas de réparations nécessitées par l'usure normale et effectuées au cours de la location. la responsabilité du
+                loueur ne pourra jamais être invoquée, même en cas d'accidents de personnes ou de choses ayant pu résulter de
+                vices ou de défauts de construction ou de réparations antérieures.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 5- ASSURANCE-</h4>
+                <p>Le locataire est garanti pour les risques suivants : En cas d'accidents fortuit ou fotif le Locataire est
+                entièrement responsable des dommages causés au véhicule en conséquence. il est tenu de nous régler le montant
+                total des réparations Le locataire est le seul conducteur du véhicule et s'engage à ne pas céder à autrui à
+                moins d'une stipulation sur le présent contrat, Les frais de rapatriement et d'immobilisation reste toujours à
+                la charge du locataire, quelle que soit la formule d'assurance contractes. ASSU-RANCE-Assure tières illimitée
+                vol et incendie est inclus dans le prix de location assure complémentaire de 35 Dh par jour en cas d'accident
+                fau-tif 30% et fortuite 50% reste à la charge du client. Assure des personnes transportés peut être souscrite
+                pour 15 Dh par jour. La voiture n'est assurée que pour la durée de location. Passé ce délai, le locataire décline
+                toute résponsabilité pour les accidents que le locataire aurait pu causer et dont il devra faire son affaire
+                personnelle. Enfin; il n'y a pas d'Assurance pour tout conducteur non muni d'un per-mis en état de validité ou
+                d'une permis datant de moins de l'an. le loueur décline toutes responsabilité pour les accidents aux tiers ou
+                dégat à la voiture que Je locataire pourrait causer pendant la période de laocation si le locataire a
+                délibérement fourni au loueur des informations fausses concernant son identité, son adresse ou la validité de
+                son permis de conduire.</p>
+            </div>
+        </td>
+        <td>
+            <div class="cgl-article">
+                <h4>Art. 6- LOCATION, CAUTION, PROLONGATION-</h4>
+                <p>Les prix de la location, ainsi que la caution, sont payables d'avance. La caution ne pourra servir, en aucun
+                cas au loueur, faire parvenir le montant, de la location en cours, sous peine à une prolongation de locataire.
+                A fin d'éviter toutes contestation et pour le cas ou le locateur voudrait conserver la voiture pour un temps
+                supérieur à celui indiqué dans le contrat, il devra après avoir obtenu l'accord de s'exposer à des poursuites
+                pour détournement de voiture ou abus de confiance. La journée de location compte de 0 heures à 24 heures et
+                toute journées commencées est due en entier.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 7- RAPATRIEMENT DE LA VOITURE-</h4>
+                <p>Le locataire s'interdit formellement d'abandonner le véhicule. En cas d'impossibilité matérielle. celle-ci
+                sera rapatriée aux frais et par les soins du locataire, la location restant due jusqu'à retour du véhicule.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 8 - PAPIER DE LA VOITURE-</h4>
+                <p>Le locataire remettra dès la fin de la location à la rentrée de la voiture la carte grise et tous les papiers
+                nécessaires à sa circulation, faute de quoi, ces pièces étant indispensables à de nouvelles locations, la
+                location continuera a être facturée aux prix initial jusqu'à leur remise à la société. En cas de perte de ces
+                papiers le locataire devra acquitter les montant des frais de duplicata. ainsi que l'immobilisation.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 9- RESPONSABILITE-</h4>
+                <p>Le locataire demeure le seule responsable des amendes, contraventions et procés-verbaux établis contre lui.</p>
+            </div>
+            <div class="cgl-article">
+                <h4>Art. 10- COMPETENCE-</h4>
+                <p>De convention expresse et en cas de contestation quelconque, le tribunal de Tanger sera seul compétant, les
+                frais de timbres et d'enregistrement restant à la charge du locataire</p>
+            </div>
+        </td>
+    </tr>
+</table>
 
 </body>
 </html>

@@ -7,19 +7,27 @@ use App\Models\Reservation;
 use App\Models\Setting;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\File;
 use NumberToWords\NumberToWords;
 
 class PdfService
 {
     /**
      * Shared dompdf options for the contract PDF. Font subsetting keeps
-     * output size sane (unsubsetted DejaVu Sans alone is ~1MB); remote
-     * fetching is off since all images are pre-embedded as base64 data URIs.
+     * output size sane (unsubsetted DejaVu Sans alone is ~1MB).
+     *
+     * isRemoteEnabled must be TRUE — the contract's @font-face rule (Arabic
+     * labels, see prepareContractData()) loads a local TTF via a file:// url(),
+     * and dompdf's CSS resolver only processes @font-face sources at all when
+     * remote fetching is on, even for local files. mergeWithDefaults=true is
+     * passed at the call site so this doesn't blow away the chroot Laravel
+     * configures (a bare `new Options($options)` with unlisted keys resets
+     * chroot, which silently breaks local file:// resolution).
      */
     private const CONTRACT_PDF_OPTIONS = [
         'defaultFont'             => 'DejaVu Sans',
         'isHtml5ParserEnabled'    => true,
-        'isRemoteEnabled'         => false,
+        'isRemoteEnabled'         => true,
         'isFontSubsettingEnabled' => true,
         'dpi'                     => 96,
         'enable_html5_parser'     => true,
@@ -31,7 +39,7 @@ class PdfService
 
         $pdf = Pdf::loadView('pdf.contract', $data)
             ->setPaper('A4', 'portrait')
-            ->setOptions(self::CONTRACT_PDF_OPTIONS);
+            ->setOptions(self::CONTRACT_PDF_OPTIONS, true);
 
         $filename = 'contract-' . $reservation->reservation_number . '.pdf';
 
@@ -61,7 +69,7 @@ class PdfService
                 'debugKeepTemp'            => false,
                 'enable_html5_parser'      => true,
                 'isPhpEnabled'             => false,
-            ]);
+            ], true);
 
         $filename = strtolower($document->document_number) . '.pdf';
 
@@ -76,7 +84,7 @@ class PdfService
 
         $pdf = Pdf::loadView('pdf.contract', $data)
             ->setPaper('A4', 'portrait')
-            ->setOptions(self::CONTRACT_PDF_OPTIONS);
+            ->setOptions(self::CONTRACT_PDF_OPTIONS, true);
 
         $filename = 'contract-' . $reservation->reservation_number . '.pdf';
         $tmpPath  = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename;
@@ -120,13 +128,32 @@ class PdfService
             }
         }
 
+        // dompdf writes its processed font cache here on first use of a
+        // custom @font-face — must exist and be writable or the font is
+        // silently dropped (falls back to defaultFont, which has no Arabic
+        // glyphs, rendering as "?").
+        File::ensureDirectoryExists(storage_path('fonts'));
+
         return [
             'reservation'      => $reservation,
             'company'          => Setting::where('group', 'company')->pluck('value', 'key')->toArray(),
             'logoDataUrl'      => $logoDataUrl,
             'signatureDataUrl' => $signatureDataUrl,
             'stampDataUrl'     => $stampDataUrl,
+            'arabicFontRegular' => $this->localFontUrl('Amiri-Regular.ttf'),
+            'arabicFontBold'    => $this->localFontUrl('Amiri-Bold.ttf'),
         ];
+    }
+
+    /**
+     * Build a dompdf-resolvable file:// url() for a bundled font. On Windows,
+     * dompdf's url resolver only succeeds with exactly two slashes before the
+     * drive letter (file://C:/...) — a third slash (file:///C:/...) makes
+     * realpath() fail and the @font-face rule is dropped without error.
+     */
+    private function localFontUrl(string $filename): string
+    {
+        return 'file://' . str_replace('\\', '/', resource_path('fonts/' . $filename));
     }
 
     public function saveBillingDocumentToMedia(BillingDocument $document): string
@@ -144,7 +171,7 @@ class PdfService
                 'isFontSubsettingEnabled'  => true,
                 'dpi'                      => 96,
                 'enable_html5_parser'      => true,
-            ]);
+            ], true);
 
         $filename = strtolower($document->document_number) . '.pdf';
         $tmpPath  = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $filename;

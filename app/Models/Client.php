@@ -23,8 +23,9 @@ class Client extends Model implements HasMedia, Auditable
 
     protected $fillable = [
         'agency_id', 'first_name', 'last_name', 'email', 'phone',
-        'date_of_birth', 'nationality', 'id_type', 'id_number', 'id_expiry_date',
+        'date_of_birth', 'birth_place', 'nationality', 'id_type', 'id_number', 'id_expiry_date',
         'driving_license_number', 'driving_license_category', 'driving_license_expiry',
+        'license_issue_date', 'license_issue_place',
         'address', 'city', 'country', 'is_blacklisted', 'blacklist_reason',
         'notes', 'agent_notes', 'created_by',
     ];
@@ -37,6 +38,7 @@ class Client extends Model implements HasMedia, Auditable
             'date_of_birth'          => 'date',
             'id_expiry_date'         => 'date',
             'driving_license_expiry' => 'date',
+            'license_issue_date'     => 'date',
             'is_blacklisted'         => 'boolean',
         ];
     }

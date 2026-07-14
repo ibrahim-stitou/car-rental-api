@@ -16,6 +16,7 @@ class StoreAgencyRequest extends FormRequest
             'city'       => 'nullable|string|max:100',
             'country'    => 'nullable|string|max:100',
             'phone'      => 'nullable|string|max:20',
+            'phone2'     => 'nullable|string|max:20',
             'email'      => 'required|email|unique:agencies,email',
             'is_active'  => 'nullable|boolean',
             'manager_id' => 'nullable|uuid|exists:users,id',

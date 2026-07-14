@@ -16,6 +16,7 @@ class AgencyResource extends JsonResource
             'city'       => $this->city,
             'country'    => $this->country,
             'phone'      => $this->phone,
+            'phone2'     => $this->phone2,
             'email'      => $this->email,
             'is_active'  => $this->is_active,
             'manager'    => $this->whenLoaded('manager', fn() => [

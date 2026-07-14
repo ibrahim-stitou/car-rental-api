@@ -16,6 +16,7 @@ class UpdateAgencyRequest extends FormRequest
             'city'       => 'nullable|string|max:100',
             'country'    => 'nullable|string|max:100',
             'phone'      => 'nullable|string|max:20',
+            'phone2'     => 'nullable|string|max:20',
             'email'      => 'sometimes|email|unique:agencies,email,' . $this->route('id'),
             'is_active'  => 'nullable|boolean',
             'manager_id' => 'nullable|uuid|exists:users,id',
