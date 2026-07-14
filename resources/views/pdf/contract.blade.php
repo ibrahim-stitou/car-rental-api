@@ -13,11 +13,16 @@
         body { font-family: DejaVu Sans, sans-serif; font-size: 8.4px; color: #000; }
 
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-        td, th { vertical-align: top; padding: 0; }
+        td, th { vertical-align: top; }
 
+        {{-- Arabic text is pre-shaped into visual glyph order server-side (see
+             PdfService::ar()) since dompdf has no reliable bidi/RTL engine of
+             its own — it just draws whatever order it's given, left to right.
+             So .ar content is plain LTR text here, only right-aligned for
+             layout; no direction/unicode-bidi properties. --}}
         .ar {
             font-family: 'Amiri', DejaVu Sans, sans-serif;
-            direction: rtl; unicode-bidi: bidi-override; text-align: right;
+            text-align: right;
             font-size: 9px;
         }
 
@@ -25,15 +30,15 @@
         .outer:last-of-type { border-bottom: 1px solid #000; }
 
         /* ── header ───────────────────────────────────────────── */
-        .header-table td { padding: 8px 10px; }
+        .header-table td { padding: 12px 16px; }
         .header-left { width: 66%; border-right: 1px solid #000; }
         .header-logo-img { max-height: 46px; max-width: 140px; display: block; margin-bottom: 4px; }
         .header-logo-text { font-size: 19px; font-weight: bold; color: #1a3a8f; letter-spacing: 0.5px; }
-        .header-agency-lines { font-size: 8px; color: #222; line-height: 1.55; margin-top: 2px; }
-        .header-right { width: 34%; text-align: center; font-size: 11px; font-style: italic; padding-top: 22px; }
+        .header-agency-lines { font-size: 8px; color: #222; line-height: 1.7; margin-top: 3px; }
+        .header-right { width: 34%; text-align: center; font-size: 11px; font-style: italic; padding: 22px 12px 12px; }
 
         /* ── ref bar ──────────────────────────────────────────── */
-        .refbar-table td { padding: 5px 10px; font-size: 9.5px; }
+        .refbar-table td { padding: 8px 16px; font-size: 9.5px; }
         .refbar-left { width: 50%; border-right: 1px solid #000; }
         .refbar-num { color: #c0392b; font-weight: bold; }
 
@@ -43,62 +48,62 @@
         .split-right { width: 50%; vertical-align: top; }
 
         /* field rows (fr label | value | ar label) */
-        .frow-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .frow-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
         .frow-label { width: 40%; white-space: nowrap; }
         .frow-value { width: 34%; font-weight: bold; }
         .frow-ar { width: 26%; }
 
-        .subhead { background: #eef1f6; font-weight: bold; padding: 3px 8px; border-bottom: 1px solid #000; border-top: 1px solid #000; font-size: 8.6px; }
+        .subhead { background: #eef1f6; font-weight: bold; padding: 6px 12px; border-bottom: 1px solid #000; border-top: 1px solid #000; font-size: 8.6px; }
         .subhead-ar { float: right; }
 
         .empty-block { padding: 10px 8px; text-align: center; }
         .empty-block .x { font-size: 16px; font-weight: bold; color: #b02a2a; }
         .empty-block .lbl { display: block; font-size: 7.5px; color: #8a2020; margin-top: 2px; }
 
-        .legal-block { padding: 8px; text-align: center; font-size: 7.6px; line-height: 1.55; border-bottom: 1px solid #ddd; }
+        .legal-block { padding: 12px; text-align: center; font-size: 7.6px; line-height: 1.65; border-bottom: 1px solid #ddd; }
         .legal-block .ar { font-size: 8px; }
 
-        .sig-row-table td { padding: 5px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .sig-row-table td { padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
         .sig-row-line { border-bottom: 1px solid #999; height: 16px; }
 
         /* ── vehicle top rows ─────────────────────────────────── */
-        .veh-two-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; width: 50%; font-size: 8.4px; }
+        .veh-two-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; width: 50%; font-size: 8.4px; }
         .veh-two-table .ar-sub { font-size: 7px; color: #555; }
 
         /* ── depart/retour ────────────────────────────────────── */
         .dr-table { border-top: 1px solid #000; }
-        .dr-table td, .dr-table th { border: 1px solid #999; padding: 3px 6px; font-size: 8px; text-align: center; }
+        .dr-table td, .dr-table th { border: 1px solid #999; padding: 6px 10px; font-size: 8px; text-align: center; }
         .dr-table th { background: #eef1f6; font-weight: bold; }
         .dr-table td.lbl { text-align: left; color: #444; width: 20%; }
         .dr-ar { font-size: 7.4px; font-weight: normal; }
 
         /* ── facturation ──────────────────────────────────────── */
-        .fact-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .fact-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
         .fact-table .fl { width: 46%; }
         .fact-table .fv { width: 34%; }
         .fact-table .fa { width: 20%; }
 
         /* ── etat vehicule ────────────────────────────────────── */
-        .etat-wrap { padding: 6px 8px; border-bottom: 1px solid #ddd; }
-        .chk { display: inline-block; width: 9px; height: 9px; border: 1px solid #333; text-align: center; line-height: 8px; font-size: 8px; margin-right: 2px; }
+        .etat-wrap { padding: 10px 12px; border-bottom: 1px solid #ddd; }
+        .chk { display: inline-block; width: 9px; height: 9px; border: 1px solid #333; text-align: center; line-height: 8px; font-size: 8px; margin-right: 3px; }
         .chk.on::after { content: "X"; }
-        .car-diagram-table td { padding: 2px; text-align: center; vertical-align: middle; }
+        .car-diagram-table td { padding: 4px; text-align: center; vertical-align: middle; }
         .car-box { border: 1px solid #999; height: 34px; }
         .fuel-gauge { border: 1px solid #999; border-radius: 50%; width: 34px; height: 34px; margin: 0 auto; text-align: center; line-height: 34px; font-size: 6px; color: #888; }
 
-        .modereg-table td { padding: 3px 8px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .modereg-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
 
-        .footer-note { text-align: center; font-size: 6.5px; color: #999; padding: 4px; }
+        .footer-note { text-align: center; font-size: 6.5px; color: #999; padding: 8px; }
 
         /* ── page 2 ───────────────────────────────────────────── */
         .page-break { page-break-before: always; }
-        .cgl-title { text-align: center; margin: 6px 0 14px; }
-        .cgl-title h1 { font-size: 14px; font-weight: bold; border: 1.5px solid #000; border-radius: 20px; display: inline-block; padding: 7px 26px; letter-spacing: 0.5px; }
-        .cgl-intro { font-size: 8.6px; margin-bottom: 14px; line-height: 1.5; }
-        .cgl-columns td { width: 50%; vertical-align: top; padding: 0 10px; }
-        .cgl-article { margin-bottom: 9px; }
-        .cgl-article h4 { font-size: 8.8px; font-weight: bold; margin-bottom: 3px; }
-        .cgl-article p { font-size: 7.8px; line-height: 1.48; text-align: justify; }
+        .cgl-title { text-align: center; margin: 10px 0 18px; }
+        .cgl-title h1 { font-size: 14px; font-weight: bold; border: 1.5px solid #000; border-radius: 20px; display: inline-block; padding: 8px 28px; letter-spacing: 0.5px; }
+        .cgl-intro { font-size: 8.6px; margin-bottom: 18px; line-height: 1.6; }
+        .cgl-columns td { width: 50%; vertical-align: top; padding: 0 14px; }
+        .cgl-article { margin-bottom: 12px; }
+        .cgl-article h4 { font-size: 8.8px; font-weight: bold; margin-bottom: 4px; }
+        .cgl-article p { font-size: 7.8px; line-height: 1.55; text-align: justify; }
     </style>
 </head>
 <body>
@@ -161,59 +166,59 @@
                 <tr>
                     <td class="frow-label">Nom :</td>
                     <td class="frow-value">{{ $client?->last_name ?? '—' }}</td>
-                    <td class="frow-ar ar">الاسم العائلي :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الاسم العائلي :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Prénom :</td>
                     <td class="frow-value">{{ $client?->first_name ?? '—' }}</td>
-                    <td class="frow-ar ar">الاسم الشخصي :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الاسم الشخصي :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Adresse :</td>
                     <td class="frow-value">{{ $client?->address ?? '—' }}</td>
-                    <td class="frow-ar ar">العنوان :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('العنوان :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Tél :</td>
                     <td class="frow-value">{{ $client?->phone ?? '—' }}</td>
-                    <td class="frow-ar ar">الهاتف :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الهاتف :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Permis de Conduire N° :</td>
                     <td class="frow-value">{{ $client?->driving_license_number ?? '—' }}</td>
-                    <td class="frow-ar ar">رخصة رقم :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رخصة رقم :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Délivré le :</td>
                     <td class="frow-value">{{ $client?->license_issue_date?->format('d/m/Y') ?? '—' }} @if($client?->license_issue_place) à {{ $client->license_issue_place }} @endif</td>
-                    <td class="frow-ar ar">منح في :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('منح في :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Date et Lieu de Naissance :</td>
                     <td class="frow-value">{{ $client?->date_of_birth?->format('d/m/Y') ?? '—' }} @if($client?->birth_place) à {{ $client->birth_place }} @endif</td>
-                    <td class="frow-ar ar">تاريخ ومكان الازدياد :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('تاريخ ومكان الازدياد :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">N° Passeport/CIN :</td>
                     <td class="frow-value">{{ $client?->id_number ?? '—' }}</td>
-                    <td class="frow-ar ar">رقم جواز السفر / بطاقة التعريف :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رقم جواز السفر / بطاقة التعريف :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Autre Conducteur Agréé :</td>
                     <td class="frow-value">{{ $second ? trim($second->last_name . ' ' . $second->first_name) : ($reservation->second_driver_name ?? '—') }}</td>
-                    <td class="frow-ar ar">السائق المعتمد الثاني :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('السائق المعتمد الثاني :') }}</td>
                 </tr>
                 @if($second)
                 <tr>
                     <td class="frow-label">Date et Lieu de Naissance :</td>
                     <td class="frow-value">{{ $second->date_of_birth?->format('d/m/Y') ?? '—' }} @if($second->birth_place) à {{ $second->birth_place }} @endif</td>
-                    <td class="frow-ar ar">تاريخ ومكان الازدياد :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('تاريخ ومكان الازدياد :') }}</td>
                 </tr>
                 @endif
                 <tr>
                     <td class="frow-label">Permis de Conduire N° :</td>
                     <td class="frow-value">{{ $second?->driving_license_number ?? $reservation->second_driver_license ?? '—' }}</td>
-                    <td class="frow-ar ar">رخصة رقم :</td>
+                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رخصة رقم :') }}</td>
                 </tr>
                 <tr>
                     <td class="frow-label">Observations et Réserve :</td>
@@ -223,27 +228,27 @@
 
             <div class="legal-block">
                 Le Client est seul responsable des délits et contraventions des circulations.<br>
-                <span class="ar">الزبون هو المسؤول الوحيد عن أي حادثة أو غرامة مالية عن أي مخالفة مرتكبة.</span><br>
+                <span class="ar">{{ \App\Services\PdfService::ar('الزبون هو المسؤول الوحيد عن أي حادثة أو غرامة مالية عن أي مخالفة مرتكبة.') }}</span><br>
                 J'ai lu et accepte les conditions stipulées ci-contre et au verso<br>
-                <span class="ar">اطلعت و وافقت على جميع الشروط المذكورة أعلاه وخلف العقد</span>
+                <span class="ar">{{ \App\Services\PdfService::ar('اطلعت و وافقت على جميع الشروط المذكورة أعلاه وخلف العقد') }}</span>
             </div>
 
             <table class="sig-row-table">
                 <tr>
                     <td style="width:60%;">Signature de client :<div class="sig-row-line"></div></td>
-                    <td class="ar" style="width:40%;">توقيع الزبون :</td>
+                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
                 </tr>
                 <tr>
                     <td>Signature de l'agent :<div class="sig-row-line"></div></td>
-                    <td class="ar">توقيع الوكيل :</td>
+                    <td class="ar">{{ \App\Services\PdfService::ar('توقيع الوكيل :') }}</td>
                 </tr>
                 <tr>
                     <td>Livrée par :<div class="sig-row-line"></div></td>
-                    <td class="ar">سلمت من طرف :</td>
+                    <td class="ar">{{ \App\Services\PdfService::ar('سلمت من طرف :') }}</td>
                 </tr>
                 <tr>
                     <td>Livrée par :<div class="sig-row-line"></div></td>
-                    <td class="ar">سلمت من طرف :</td>
+                    <td class="ar">{{ \App\Services\PdfService::ar('سلمت من طرف :') }}</td>
                 </tr>
             </table>
 
@@ -254,73 +259,73 @@
 
             <table class="veh-two-table">
                 <tr>
-                    <td>Marque : <b>{{ $vehicle?->brand ?? '—' }}</b><br><span class="ar-sub ar">علامة</span></td>
-                    <td>Type : <b>{{ $vehicle?->model ?? '—' }}</b><br><span class="ar-sub ar">صنف</span></td>
+                    <td>Marque : <b>{{ $vehicle?->brand ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('علامة') }}</span></td>
+                    <td>Type : <b>{{ $vehicle?->model ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('صنف') }}</span></td>
                 </tr>
                 <tr>
-                    <td>Matricule : <b>{{ $vehicle?->registration_number ?? '—' }}</b><br><span class="ar-sub ar">رقم اللوحة</span></td>
-                    <td>Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b><br><span class="ar-sub ar">وقود</span></td>
+                    <td>Matricule : <b>{{ $vehicle?->registration_number ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('رقم اللوحة') }}</span></td>
+                    <td>Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('وقود') }}</span></td>
                 </tr>
             </table>
 
             <table class="dr-table">
                 <tr>
                     <th style="width:20%;"></th>
-                    <th>Départ <span class="dr-ar ar">الانطلاق</span></th>
-                    <th>Retour <span class="dr-ar ar">العودة</span></th>
+                    <th>Départ <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الانطلاق') }}</span></th>
+                    <th>Retour <span class="dr-ar ar">{{ \App\Services\PdfService::ar('العودة') }}</span></th>
                 </tr>
                 <tr>
-                    <td class="lbl">Date <span class="dr-ar ar">التاريخ</span></td>
+                    <td class="lbl">Date <span class="dr-ar ar">{{ \App\Services\PdfService::ar('التاريخ') }}</span></td>
                     <td>{{ $pickup?->format('d/m/Y') ?? '—' }}</td>
                     <td>{{ ($returnActual ?? $returnPlanned)?->format('d/m/Y') ?? '—' }}</td>
                 </tr>
                 <tr>
-                    <td class="lbl">Heure <span class="dr-ar ar">الساعة</span></td>
+                    <td class="lbl">Heure <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الساعة') }}</span></td>
                     <td>{{ $pickup?->format('H:i') ?? '—' }}</td>
                     <td>{{ ($returnActual ?? $returnPlanned)?->format('H:i') ?? '—' }}</td>
                 </tr>
                 <tr>
-                    <td class="lbl">Km <span class="dr-ar ar">كيلومتر</span></td>
+                    <td class="lbl">Km <span class="dr-ar ar">{{ \App\Services\PdfService::ar('كيلومتر') }}</span></td>
                     <td>{{ $reservation->initial_mileage !== null ? number_format($reservation->initial_mileage) : '—' }}</td>
                     <td>{{ $reservation->final_mileage !== null ? number_format($reservation->final_mileage) : '—' }}</td>
                 </tr>
                 <tr>
-                    <td class="lbl">Lieu <span class="dr-ar ar">المكان</span></td>
+                    <td class="lbl">Lieu <span class="dr-ar ar">{{ \App\Services\PdfService::ar('المكان') }}</span></td>
                     <td>{{ $reservation->pickup_location ?? '—' }}</td>
                     <td>{{ $reservation->actual_return_location ?? $reservation->return_location ?? $reservation->pickup_location ?? '—' }}</td>
                 </tr>
             </table>
 
-            <div class="subhead">Facturation (Livraison) <span class="subhead-ar ar">فاتورة (التسليم)</span></div>
+            <div class="subhead">Facturation (Livraison) <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('فاتورة (التسليم)') }}</span></div>
             <table class="fact-table">
                 <tr>
                     <td class="fl">Journée(s) :</td>
                     <td class="fv">{{ $reservation->total_days ?? '—' }} x {{ number_format($reservation->daily_rate ?? 0, 2) }}</td>
-                    <td class="fa ar">الأيام :</td>
+                    <td class="fa ar">{{ \App\Services\PdfService::ar('الأيام :') }}</td>
                 </tr>
                 <tr>
                     <td class="fl">Divers :</td>
                     <td class="fv">{{ ($reservation->additional_fees ?? 0) > 0 ? number_format($reservation->additional_fees, 2) : 'x' }}</td>
-                    <td class="fa ar">مختلفة :</td>
+                    <td class="fa ar">{{ \App\Services\PdfService::ar('مختلفة :') }}</td>
                 </tr>
                 <tr>
                     <td class="fl">Total H.T. :</td>
                     <td class="fv"><b>{{ number_format($reservation->subtotal ?? 0, 2) }}</b></td>
-                    <td class="fa ar">المجموع بدون الضريبة :</td>
+                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع بدون الضريبة :') }}</td>
                 </tr>
                 <tr>
                     <td class="fl">T.V.A % :</td>
                     <td class="fv">{{ $company['tva_rate'] ?? '—' }}</td>
-                    <td class="fa ar">الضريبة :</td>
+                    <td class="fa ar">{{ \App\Services\PdfService::ar('الضريبة :') }}</td>
                 </tr>
                 <tr>
                     <td class="fl">Total T.T.C. :</td>
                     <td class="fv"><b>{{ number_format($reservation->total_amount ?? 0, 2) }}</b></td>
-                    <td class="fa ar">المجموع مع الضريبة :</td>
+                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع مع الضريبة :') }}</td>
                 </tr>
             </table>
 
-            <div class="subhead">État du Véhicule <span class="subhead-ar ar">حالة السيارة</span></div>
+            <div class="subhead">État du Véhicule <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('حالة السيارة') }}</span></div>
             <div class="etat-wrap">
                 <span class="chk"></span> Griffe &nbsp;
                 <span class="chk"></span> Rayure &nbsp;
@@ -339,33 +344,33 @@
             <table class="sig-row-table">
                 <tr>
                     <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
-                    <td class="ar" style="width:40%;">توقيع الزبون :</td>
+                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
                 </tr>
             </table>
 
-            <div class="subhead">Mode de Règlement <span class="subhead-ar ar">طريقة الأداء</span></div>
+            <div class="subhead">Mode de Règlement <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('طريقة الأداء') }}</span></div>
             <table class="modereg-table">
                 <tr>
                     <td style="width:50%;">
                         <span class="chk {{ $payMethod === 'check' ? 'on' : '' }}"></span> Chèque
                     </td>
-                    <td class="ar" style="width:50%;">نقدا <span class="chk {{ $payMethod === 'cash' ? 'on' : '' }}"></span> Espèce</td>
+                    <td class="ar" style="width:50%;">{{ \App\Services\PdfService::ar('نقدا') }} <span class="chk {{ $payMethod === 'cash' ? 'on' : '' }}"></span> Espèce</td>
                 </tr>
                 <tr>
-                    <td colspan="2">Référence : — <span class="ar" style="float:right;">المرجع :</span></td>
+                    <td colspan="2">Référence : — <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('المرجع :') }}</span></td>
                 </tr>
                 <tr>
-                    <td colspan="2">Date : {{ now()->format('d/m/Y') }} <span class="ar" style="float:right;">التاريخ :</span></td>
+                    <td colspan="2">Date : {{ now()->format('d/m/Y') }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('التاريخ :') }}</span></td>
                 </tr>
                 <tr>
-                    <td colspan="2">Retour Présence à bord : {{ $returnActual?->format('d/m/Y') ?? '—' }} <span class="ar" style="float:right;">الرجوع النهائي :</span></td>
+                    <td colspan="2">Retour Présence à bord : {{ $returnActual?->format('d/m/Y') ?? '—' }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('الرجوع النهائي :') }}</span></td>
                 </tr>
             </table>
 
             <table class="sig-row-table">
                 <tr>
                     <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
-                    <td class="ar" style="width:40%;">توقيع الزبون :</td>
+                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
                 </tr>
             </table>
 

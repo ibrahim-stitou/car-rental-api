@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BillingDocument;
 use App\Models\Reservation;
 use App\Models\Setting;
+use ArPHP\I18N\Arabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
@@ -12,6 +13,26 @@ use NumberToWords\NumberToWords;
 
 class PdfService
 {
+    private static ?Arabic $arabicShaper = null;
+
+    /**
+     * dompdf has no real bidi/text-shaping engine — it draws glyphs in
+     * whatever order the string is given, left to right (see
+     * https://github.com/dompdf/dompdf/issues/712 and friends). Relying on
+     * CSS `direction: rtl` to reorder Arabic at render time is unreliable,
+     * especially once French and Arabic text share a line, and produces
+     * mirrored/scrambled words. The fix used throughout the ecosystem
+     * (ar-php, the basis of several laravel-dompdf-arabic wrapper packages)
+     * is to pre-shape and reorder Arabic into its final *visual* glyph
+     * sequence in PHP, then render it as plain left-to-right text — dompdf
+     * then just has to draw characters in the order given, which it does
+     * reliably.
+     */
+    public static function ar(string $text): string
+    {
+        self::$arabicShaper ??= new Arabic();
+        return self::$arabicShaper->utf8Glyphs($text);
+    }
     /**
      * Shared dompdf options for the contract PDF. Font subsetting keeps
      * output size sane (unsubsetted DejaVu Sans alone is ~1MB).
