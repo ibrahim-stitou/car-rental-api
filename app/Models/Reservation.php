@@ -148,6 +148,10 @@ class Reservation extends Model implements HasMedia, Auditable
     {
         $this->addMediaCollection('contract')->singleFile()
             ->acceptsMimeTypes(['application/pdf']);
+        // Archive of superseded contracts (e.g. before regeneration after an
+        // extension) — kept for audit history, never singleFile.
+        $this->addMediaCollection('contract_history')
+            ->acceptsMimeTypes(['application/pdf']);
         $this->addMediaCollection('pickup_photos')
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
         $this->addMediaCollection('return_photos')

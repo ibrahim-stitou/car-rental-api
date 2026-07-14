@@ -117,6 +117,13 @@ abstract class BaseRepository
             if ($value === null || $value === '') {
                 continue;
             }
+            // Query-string values arrive as strings, so a boolean filter like
+            // "is_active=true" would otherwise be compared as the string "true"
+            // against a tinyint column and get coerced to 0 by MySQL — silently
+            // inverting the filter. Normalize the common boolean spellings first.
+            if (is_string($value) && in_array(strtolower($value), ['true', 'false'], true)) {
+                $value = strtolower($value) === 'true';
+            }
             $query->where($field, $value);
         }
         return $query;

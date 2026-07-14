@@ -238,6 +238,11 @@ class BillingService
     public function markAsPaid(string $id, array $data): BillingDocument
     {
         $document = $this->repository->findByIdOrFail($id);
+
+        if ($document->type !== 'FA') {
+            abort(422, 'Seules les factures peuvent être marquées comme payées.');
+        }
+
         $document->update([
             'status'            => 'paid',
             'paid_amount'       => $document->total_amount,

@@ -18,7 +18,10 @@ class ParameterController extends BaseController
 
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['category', 'is_active']);
+        $filters = $request->only(['category']);
+        if ($request->has('is_active')) {
+            $filters['is_active'] = $request->boolean('is_active');
+        }
         $data = $this->service->list($filters, $request->integer('per_page', 100));
         return $this->paginated($data, ParameterResource::class);
     }

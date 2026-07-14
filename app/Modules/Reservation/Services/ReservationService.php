@@ -115,6 +115,30 @@ class ReservationService
         return $reservation->fresh();
     }
 
+    /**
+     * After a reservation's dates change (extension), a previously-locked
+     * contract no longer reflects reality. Archive it into the
+     * 'contract_history' collection (so it stays auditable) and unlock +
+     * immediately regenerate a fresh contract against the current data.
+     * No-op if no contract had been generated yet — the next generation
+     * will simply use the already-updated dates.
+     */
+    public function regenerateContractAfterExtension(Reservation $reservation): Reservation
+    {
+        if (!$reservation->contract_generated_at) {
+            return $reservation;
+        }
+
+        $current = $reservation->getFirstMedia('contract');
+        if ($current) {
+            $current->move($reservation, 'contract_history');
+        }
+
+        $reservation->update(['contract_generated_at' => null]);
+
+        return $this->generateAndLockContract($reservation->fresh());
+    }
+
     public function activate(string $id, array $data): Reservation
     {
         $reservation = $this->repository->findByIdOrFail($id);

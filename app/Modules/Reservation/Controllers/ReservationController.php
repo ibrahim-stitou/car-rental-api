@@ -10,7 +10,7 @@ use App\Modules\Reservation\Services\ReservationService;
 use App\Services\PdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 
 class ReservationController extends BaseController
 {
@@ -439,7 +439,9 @@ class ReservationController extends BaseController
     }
 
     /**
-     * Extend a reservation — creates a new contract (if active) or updates the end date (if not yet active).
+     * Extend a reservation's return date. If a contract was already
+     * generated, it is archived to history and a fresh one is generated
+     * against the new dates.
      */
     public function extend(Request $request, string $id): JsonResponse
     {
@@ -488,6 +490,8 @@ class ReservationController extends BaseController
         }
         $reservation->calculateTotal();
         $reservation->save();
+
+        $reservation = $this->service->regenerateContractAfterExtension($reservation);
 
         return $this->success(new ReservationResource($reservation->fresh(['vehicle', 'client', 'agency'])), 'Réservation prolongée avec succès');
     }

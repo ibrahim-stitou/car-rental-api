@@ -107,12 +107,12 @@ class DashboardController extends BaseController
         $q = BillingDocument::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
 
         $revenueThisMonth = (float) (clone $q)->where('type', 'FA')->where('status', 'paid')
-            ->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)
+            ->whereMonth('paid_at', now()->month)->whereYear('paid_at', now()->year)
             ->sum('total_amount');
 
         $revenueLastMonth = (float) (clone $q)->where('type', 'FA')->where('status', 'paid')
-            ->whereMonth('created_at', now()->subMonth()->month)
-            ->whereYear('created_at', now()->subMonth()->year)
+            ->whereMonth('paid_at', now()->subMonth()->month)
+            ->whereYear('paid_at', now()->subMonth()->year)
             ->sum('total_amount');
 
         return [
@@ -120,9 +120,9 @@ class DashboardController extends BaseController
             'total_revenue'       => (float) (clone $q)->where('type', 'FA')->where('status', 'paid')->sum('total_amount'),
             'revenue_this_month'  => $revenueThisMonth,
             'revenue_last_month'  => $revenueLastMonth,
-            'pending_amount'      => (float) (clone $q)->where('type', 'FA')->whereIn('status', ['pending', 'approved'])->sum('total_amount'),
-            'draft_count'         => (clone $q)->where('status', 'draft')->count(),
-            'paid_count'          => (clone $q)->where('status', 'paid')->count(),
+            'pending_amount'      => (float) (clone $q)->where('type', 'FA')->whereIn('status', ['pending', 'approved'])->sum('balance'),
+            'draft_count'         => (clone $q)->where('type', 'FA')->where('status', 'draft')->count(),
+            'paid_count'          => (clone $q)->where('type', 'FA')->where('status', 'paid')->count(),
         ];
     }
 
@@ -161,7 +161,7 @@ class DashboardController extends BaseController
         $maintenances = Maintenance::query()
             ->when($agencyId, fn($q) => $q->whereHas('vehicle', $vehicleScope))
             ->where('status', 'scheduled')
-            ->whereBetween('maintenance_date', [now(), now()->addDays(7)])
+            ->whereBetween('maintenance_date', [now(), now()->addDays(30)])
             ->count();
 
         return compact('insurances', 'inspections', 'vignettes', 'maintenances');
@@ -170,13 +170,13 @@ class DashboardController extends BaseController
     private function monthlyRevenue(?string $agencyId): array
     {
         return BillingDocument::select(
-            DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"),
+            DB::raw("DATE_FORMAT(paid_at, '%Y-%m') as month"),
             DB::raw('SUM(total_amount) as revenue')
         )
             ->where('type', 'FA')
             ->where('status', 'paid')
             ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
-            ->where('created_at', '>=', now()->subMonths(12))
+            ->where('paid_at', '>=', now()->subMonths(12))
             ->groupBy('month')
             ->orderBy('month')
             ->get()
