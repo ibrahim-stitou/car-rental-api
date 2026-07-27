@@ -36,6 +36,7 @@ class ClientResource extends JsonResource
             'country'                  => $this->country,
             'is_blacklisted'           => $this->is_blacklisted,
             'blacklist_reason'         => $this->blacklist_reason,
+            'reservations_count'       => $this->whenCounted('reservations'),
             'notes'                    => $this->notes,
             'id_document'              => $this->getFirstMediaUrl('id_document') ?: null,
             'id_document_media_id'     => $this->getFirstMedia('id_document')?->id,

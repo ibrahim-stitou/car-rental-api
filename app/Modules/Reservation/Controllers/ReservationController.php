@@ -33,12 +33,7 @@ class ReservationController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        if ($request->filled('search')) {
-            $data = $this->service->search($request->search, $request->integer('per_page', 15));
-            return $this->paginated($data, ReservationResource::class);
-        }
-
-        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status', 'overdue']);
+        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status', 'overdue', 'search']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, ReservationResource::class);
     }

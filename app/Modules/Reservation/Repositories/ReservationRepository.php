@@ -25,6 +25,16 @@ class ReservationRepository extends BaseRepository
             $query->overdue();
         }
 
+        if (!empty($filters['search'])) {
+            $term = $filters['search'];
+            unset($filters['search']);
+            $query->where(function (Builder $q) use ($term) {
+                foreach ($this->getSearchFields() as $field) {
+                    $q->orWhere($field, 'LIKE', "%{$term}%");
+                }
+            });
+        }
+
         return parent::applyFilters($query, $filters);
     }
 }

@@ -27,7 +27,7 @@ class ClientService
 
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->paginate($perPage, $filters, ['agencies', 'creator']);
+        return $this->repository->paginate($perPage, $filters, ['agencies', 'creator'], 'created_at', 'desc', ['reservations']);
     }
 
     public function search(string $term, int $perPage = 15): LengthAwarePaginator
