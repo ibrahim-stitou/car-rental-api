@@ -20,8 +20,9 @@ class ClientService
             $dataTable->addColumn('full_name', fn($c) => $c->full_name)
                 ->addColumn('agency_name', fn($c) => $c->agencies->pluck('name')->join(', ') ?: '—')
                 ->addColumn('is_license_valid', fn($c) => $c->is_license_valid ? 'Oui' : 'Non')
-                ->addColumn('blacklisted', fn($c) => $c->is_blacklisted ? 'Oui' : 'Non');
-        });
+                ->addColumn('blacklisted', fn($c) => $c->is_blacklisted ? 'Oui' : 'Non')
+                ->addColumn('reservations_count', fn($c) => $c->reservations_count);
+        }, ['reservations']);
     }
 
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator

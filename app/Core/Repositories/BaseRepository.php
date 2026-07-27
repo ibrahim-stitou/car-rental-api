@@ -97,9 +97,12 @@ abstract class BaseRepository
     /**
      * Return a Yajra DataTables response for server-side processing.
      */
-    public function datatable(array $filters = [], array $relations = [], ?callable $customizer = null)
+    public function datatable(array $filters = [], array $relations = [], ?callable $customizer = null, array $withCount = [])
     {
         $query = $this->model->with($relations);
+        if (!empty($withCount)) {
+            $query = $query->withCount($withCount);
+        }
         $query = $this->applyFilters($query, $filters);
 
         $dataTable = DataTables::eloquent($query);

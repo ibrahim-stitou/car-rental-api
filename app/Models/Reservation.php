@@ -72,10 +72,13 @@ class Reservation extends Model implements HasMedia, Auditable
     }
 
     // Methods
+    // Format "YY-XXXX" (ex: 26-0001), repris tel quel de l'ancien système pour
+    // assurer la continuité de la numérotation après la migration des données
+    // historiques (les réservations migrées portent déjà ce même format).
     public function generateReservationNumber(): string
     {
-        $year = now()->year;
-        $prefix = "RES-{$year}-";
+        $year = now()->format('y');
+        $prefix = "{$year}-";
 
         // Include soft-deleted rows: the unique index still holds their number,
         // so a plain count() would collide once any reservation for the year is deleted.
@@ -86,7 +89,7 @@ class Reservation extends Model implements HasMedia, Auditable
 
         $next = $latestNumber ? ((int) substr($latestNumber, strlen($prefix))) + 1 : 1;
 
-        return $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
     /**

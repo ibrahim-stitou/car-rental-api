@@ -317,8 +317,14 @@ WHERE NOT EXISTS (SELECT 1 FROM vehicles x WHERE x.legacy_id = c.id);
 -- =============================================================================
 -- SECTION 8 — Réservations (contrat -> reservations)
 -- =============================================================================
--- reservation_number = 'RES-LEGACY-<ancien_id>' : ne collisionne jamais avec la
--- numérotation auto-générée par l'application (format 'RES-YYYY-NNNNNN').
+-- reservation_number = référence de l'ancien contrat quand elle existe (format
+-- 'YY-XXXX', ex. '26-0009' — l'ancien système ne l'attribuait qu'à partir de
+-- 2026), sinon l'id numérique brut de l'ancien contrat (c'est exactement ce que
+-- l'ancien frontend affichait par défaut en absence de référence : voir
+-- reservation-list.component.ts, `displayId: item.reference ? item.reference : item.id`).
+-- La génération des nouveaux numéros (app\Models\Reservation::generateReservationNumber)
+-- reprend elle aussi le format 'YY-XXXX' et continue automatiquement la même
+-- séquence à partir du max déjà présent en base après cette migration.
 -- `notes` mentionne explicitement l'ancien contrat, comme demandé.
 -- Chèque -> bank_transfer (le nouvel enum de paiement de réservation n'a pas de
 -- valeur "chèque" ; le plus proche disponible est utilisé).
@@ -335,7 +341,7 @@ INSERT INTO reservations (
 )
 SELECT
     UUID(),
-    CONCAT('RES-LEGACY-', co.id),
+    COALESCE(NULLIF(TRIM(co.reference), ''), CAST(co.id AS CHAR)),
     na.id,
     nv.id,
     ncl.id,
@@ -494,6 +500,30 @@ WHERE NOT EXISTS (
 
 
 -- =============================================================================
+-- SECTION 11b — Compteurs de numérotation des documents de facturation
+-- =============================================================================
+-- Les nouveaux documents générés par l'application utilisent un format différent
+-- de l'ancien (ex. 'FA-000007' contre l'ancien 'FAC-2026-07-006'), piloté par un
+-- compteur persistant (table settings, groupe 'counters', clés fa_current /
+-- bc_current / bl_current). On l'aligne ici sur le nombre réel de documents déjà
+-- migrés par type, pour que la numérotation continue logiquement au lieu de
+-- repartir de zéro. GREATEST() évite de faire reculer le compteur si le script
+-- est ré-exécuté ou si le compteur a déjà été avancé manuellement/par l'usage.
+
+UPDATE settings s
+JOIN (
+    SELECT
+        CASE type WHEN 'FA' THEN 'fa_current' WHEN 'BC' THEN 'bc_current' WHEN 'BL' THEN 'bl_current' END AS setting_key,
+        COUNT(*) AS nb
+    FROM billing_documents
+    WHERE legacy_id IS NOT NULL AND type IN ('FA', 'BC', 'BL')
+    GROUP BY type
+) counts ON counts.setting_key = s.`key`
+SET s.value = GREATEST(CAST(s.value AS UNSIGNED), counts.nb)
+WHERE s.group = 'counters';
+
+
+-- =============================================================================
 -- SECTION 12 — (Volontairement non migré)
 -- =============================================================================
 -- - `logger` (2838 lignes de texte libre, format non structuré) : aucun
@@ -542,6 +572,9 @@ UNION ALL
 SELECT 'technical_inspection', id, legacy_id FROM technical_inspections WHERE inspection_center = 'À COMPLÉTER (migration)'
 UNION ALL
 SELECT 'billing_document', id, legacy_id FROM billing_documents WHERE client_name = 'Client non renseigné (migration)';
+
+-- Compteurs de facturation après migration (prochain numéro généré = valeur + 1)
+SELECT `key`, value FROM settings WHERE `group` = 'counters' AND `key` IN ('fa_current', 'bc_current', 'bl_current');
 
 SELECT CONCAT('Migration terminée en ', TIMESTAMPDIFF(SECOND, @migration_started_at, NOW()), ' secondes.') AS resultat;
 
