@@ -24,7 +24,8 @@ class UpdateClientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'agency_id'                => 'sometimes|uuid|exists:agencies,id',
+            'agency_ids'               => 'sometimes|array|min:1',
+            'agency_ids.*'             => 'uuid|exists:agencies,id',
             'first_name'               => 'sometimes|string|max:255',
             'last_name'                => 'sometimes|string|max:255',
             'email'                    => 'sometimes|email|unique:clients,email,' . $this->route('id'),

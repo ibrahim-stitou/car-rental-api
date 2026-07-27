@@ -26,6 +26,7 @@ class UpdateBillingDocumentRequest extends FormRequest
             'items'                    => 'sometimes|array|min:1',
             'items.*.description'      => 'required_with:items|string',
             'items.*.quantity'         => 'required_with:items|integer|min:1',
+            'items.*.unit'             => 'nullable|string|max:50',
             'items.*.unit_price'       => 'required_with:items|numeric|min:0',
             'items.*.tax_rate'         => 'nullable|numeric|min:0|max:100',
             'items.*.notes'            => 'nullable|string',

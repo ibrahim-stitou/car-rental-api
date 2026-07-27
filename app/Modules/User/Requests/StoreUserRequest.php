@@ -11,7 +11,8 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'agency_id'  => 'nullable|uuid|exists:agencies,id',
+            'agency_ids'   => 'sometimes|array',
+            'agency_ids.*' => 'uuid|exists:agencies,id',
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
             'email'      => 'required|email|unique:users,email',

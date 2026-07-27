@@ -7,6 +7,7 @@ use App\Modules\User\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends BaseController
 {
@@ -18,7 +19,7 @@ class ProfileController extends BaseController
     public function show(): JsonResponse
     {
         $user = auth('api')->user();
-        $user->load(['agency', 'roles', 'permissions']);
+        $user->load(['agencies', 'roles', 'permissions']);
         return $this->success(new UserResource($user));
     }
 
@@ -87,36 +88,92 @@ class ProfileController extends BaseController
 
     public function uploadSignature(Request $request): JsonResponse
     {
-        $request->validate(['signature' => 'required|image|mimes:jpeg,png,webp|max:2048']);
+        $request->validate([
+            'signature' => 'required|image|mimes:jpeg,png,webp|max:2048',
+            'agency_id' => 'required|uuid|exists:agencies,id',
+        ]);
         $user = auth('api')->user();
-        $user->clearMediaCollection('signature');
-        $user->addMedia($request->file('signature'))->toMediaCollection('signature');
-        return $this->success([
-            'url' => $user->getFirstMediaUrl('signature'),
-        ], 'Signature enregistrée');
+        $membership = $this->requireAgencyMembership($user, $request->agency_id);
+        if ($membership instanceof JsonResponse) {
+            return $membership;
+        }
+
+        if ($membership->pivot->signature_path) {
+            Storage::disk('public')->delete($membership->pivot->signature_path);
+        }
+        $path = $request->file('signature')->store('agency-signatures', 'public');
+        $user->agencies()->updateExistingPivot($request->agency_id, ['signature_path' => $path]);
+
+        return $this->success(['url' => Storage::disk('public')->url($path)], 'Signature enregistrée');
     }
 
     public function uploadStamp(Request $request): JsonResponse
     {
-        $request->validate(['stamp' => 'required|image|mimes:jpeg,png,webp|max:2048']);
+        $request->validate([
+            'stamp'     => 'required|image|mimes:jpeg,png,webp|max:2048',
+            'agency_id' => 'required|uuid|exists:agencies,id',
+        ]);
         $user = auth('api')->user();
-        $user->clearMediaCollection('stamp');
-        $user->addMedia($request->file('stamp'))->toMediaCollection('stamp');
-        return $this->success([
-            'url' => $user->getFirstMediaUrl('stamp'),
-        ], 'Cachet enregistré');
+        $membership = $this->requireAgencyMembership($user, $request->agency_id);
+        if ($membership instanceof JsonResponse) {
+            return $membership;
+        }
+
+        if ($membership->pivot->stamp_path) {
+            Storage::disk('public')->delete($membership->pivot->stamp_path);
+        }
+        $path = $request->file('stamp')->store('agency-stamps', 'public');
+        $user->agencies()->updateExistingPivot($request->agency_id, ['stamp_path' => $path]);
+
+        return $this->success(['url' => Storage::disk('public')->url($path)], 'Cachet enregistré');
     }
 
-    public function deleteSignature(): JsonResponse
+    public function deleteSignature(Request $request): JsonResponse
     {
-        auth('api')->user()->clearMediaCollection('signature');
+        $request->validate(['agency_id' => 'required|uuid|exists:agencies,id']);
+        $user = auth('api')->user();
+        $membership = $this->requireAgencyMembership($user, $request->agency_id);
+        if ($membership instanceof JsonResponse) {
+            return $membership;
+        }
+
+        if ($membership->pivot->signature_path) {
+            Storage::disk('public')->delete($membership->pivot->signature_path);
+        }
+        $user->agencies()->updateExistingPivot($request->agency_id, ['signature_path' => null]);
+
         return $this->success(null, 'Signature supprimée');
     }
 
-    public function deleteStamp(): JsonResponse
+    public function deleteStamp(Request $request): JsonResponse
     {
-        auth('api')->user()->clearMediaCollection('stamp');
+        $request->validate(['agency_id' => 'required|uuid|exists:agencies,id']);
+        $user = auth('api')->user();
+        $membership = $this->requireAgencyMembership($user, $request->agency_id);
+        if ($membership instanceof JsonResponse) {
+            return $membership;
+        }
+
+        if ($membership->pivot->stamp_path) {
+            Storage::disk('public')->delete($membership->pivot->stamp_path);
+        }
+        $user->agencies()->updateExistingPivot($request->agency_id, ['stamp_path' => null]);
+
         return $this->success(null, 'Cachet supprimé');
+    }
+
+    /**
+     * Returns the matching agency (with its pivot loaded) if the user belongs
+     * to it, or a 403 JsonResponse otherwise — cachets are strictly per
+     * (user, agency), so uploading one requires actual membership.
+     */
+    private function requireAgencyMembership($user, string $agencyId)
+    {
+        $agency = $user->agencies()->where('agencies.id', $agencyId)->first();
+        if (!$agency) {
+            return $this->forbidden("Vous n'appartenez pas à cette agence");
+        }
+        return $agency;
     }
 }
 

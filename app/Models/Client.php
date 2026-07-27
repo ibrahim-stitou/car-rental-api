@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -22,7 +23,7 @@ class Client extends Model implements HasMedia, Auditable
     use HasFactory, HasUuid, SoftDeletes, InteractsWithMedia, HasMediaCollections, AuditableTrait;
 
     protected $fillable = [
-        'agency_id', 'first_name', 'last_name', 'email', 'phone',
+        'first_name', 'last_name', 'email', 'phone',
         'date_of_birth', 'birth_place', 'nationality', 'id_type', 'id_number', 'id_expiry_date',
         'driving_license_number', 'driving_license_category', 'driving_license_expiry',
         'license_issue_date', 'license_issue_place',
@@ -61,7 +62,10 @@ class Client extends Model implements HasMedia, Auditable
     }
 
     // Relations
-    public function agency(): BelongsTo { return $this->belongsTo(Agency::class); }
+    public function agencies(): BelongsToMany
+    {
+        return $this->belongsToMany(Agency::class, 'agency_client')->using(AgencyClient::class);
+    }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function reservations(): HasMany { return $this->hasMany(Reservation::class); }
     public function claims(): HasMany { return $this->hasMany(Claim::class); }

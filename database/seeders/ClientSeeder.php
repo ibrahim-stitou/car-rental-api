@@ -16,7 +16,9 @@ class ClientSeeder extends Seeder
         $agencies = Agency::all();
 
         foreach ($agencies as $agency) {
-            Client::factory()->count(10)->create(['agency_id' => $agency->id]);
+            Client::factory()->count(10)->create()->each(
+                fn (Client $client) => $client->agencies()->sync([$agency->id])
+            );
         }
     }
 }

@@ -34,7 +34,9 @@ class ExpenseController extends BaseController
             'category'       => ['required', Rule::exists('parameters', 'value')->where('category', 'expense_category')->where('is_active', true)],
             'amount'         => 'required|numeric|min:0',
             'expense_date'   => 'required|date',
-            'agency_id'      => 'required|uuid|exists:agencies,id',
+            'agency_id'      => 'required_without:agency_ids|nullable|uuid|exists:agencies,id',
+            'agency_ids'     => 'required_without:agency_id|nullable|array|min:1',
+            'agency_ids.*'   => 'uuid|exists:agencies,id',
             'vehicle_id'     => 'nullable|uuid|exists:vehicles,id',
             'payment_method' => 'nullable|in:cash,card,bank_transfer,check,online',
             'reference'      => 'nullable|string|max:255',
@@ -45,12 +47,45 @@ class ExpenseController extends BaseController
             return $this->validationError($validator->errors());
         }
 
-        $expense = Expense::create(array_merge(
-            $request->only(['title', 'category', 'amount', 'expense_date', 'agency_id', 'vehicle_id', 'payment_method', 'reference', 'notes']),
-            ['recorded_by' => Auth::id()]
-        ));
+        $agencyIds = array_values(array_unique(array_filter(
+            $request->input('agency_ids') ?: [$request->input('agency_id')]
+        )));
 
-        return $this->created($expense->load(['agency:id,name', 'vehicle:id,brand,model,registration_number']), 'Dépense enregistrée');
+        $base = array_merge(
+            $request->only(['title', 'category', 'expense_date', 'vehicle_id', 'payment_method', 'reference', 'notes']),
+            ['recorded_by' => Auth::id()]
+        );
+
+        $shares = $this->splitAmount((float) $request->input('amount'), count($agencyIds));
+
+        $expenses = collect($agencyIds)
+            ->values()
+            ->map(fn($agencyId, $index) => Expense::create(array_merge($base, [
+                'agency_id' => $agencyId,
+                'amount'    => $shares[$index],
+            ]))->load(['agency:id,name', 'vehicle:id,brand,model,registration_number']));
+
+        return $this->created($expenses->values(), 'Dépense enregistrée');
+    }
+
+    /**
+     * Splits a total amount into $count equal cent-safe shares whose sum
+     * exactly equals the original total (the last share absorbs the rounding remainder).
+     */
+    private function splitAmount(float $total, int $count): array
+    {
+        if ($count <= 1) {
+            return [round($total, 2)];
+        }
+
+        $totalCents = (int) round($total * 100);
+        $baseShareCents = intdiv($totalCents, $count);
+        $remainderCents = $totalCents - ($baseShareCents * $count);
+
+        $sharesCents = array_fill(0, $count, $baseShareCents);
+        $sharesCents[$count - 1] += $remainderCents;
+
+        return array_map(fn($cents) => round($cents / 100, 2), $sharesCents);
     }
 
     public function show(string $id): JsonResponse

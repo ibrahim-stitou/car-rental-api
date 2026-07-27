@@ -153,15 +153,21 @@ class ReservationService
 
     public function complete(string $id, array $data): Reservation
     {
+        $finalAmountOverride = $data['final_total_amount'] ?? null;
+        unset($data['final_total_amount']);
+
         $reservation = $this->repository->findByIdOrFail($id);
         $reservation->fill(array_merge($data, [
             'status'             => 'completed',
             'actual_return_date' => $data['actual_return_date'] ?? now(),
         ]));
 
-        // Additional fees can be adjusted at checkout — recalculate the total so
-        // balance/payment_status stay accurate for final settlement.
-        if (array_key_exists('additional_fees', $data)) {
+        // The agent's explicit final amount (e.g. after negotiating an early
+        // return) always wins; otherwise recalculate — which also applies the
+        // early-return proration and picks up any additional_fees change.
+        if ($finalAmountOverride !== null) {
+            $reservation->total_amount = $finalAmountOverride;
+        } else {
             $reservation->calculateTotal();
         }
 

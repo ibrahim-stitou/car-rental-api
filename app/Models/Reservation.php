@@ -89,12 +89,57 @@ class Reservation extends Model implements HasMedia, Auditable
         return $prefix . str_pad($next, 6, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Recomputes total_days/subtotal/discount_amount/total_amount. When the
+     * actual return happened before the contracted return_date (early
+     * return), billing is prorated to the actual days used rather than the
+     * originally contracted duration — never extended for a late return,
+     * which is handled separately via additional_fees.
+     */
     public function calculateTotal(): void
     {
-        $this->total_days = max(1, (int) $this->pickup_date->diffInDays($this->return_date));
+        $billableEndDate = $this->isEarlyReturn ? $this->actual_return_date : $this->return_date;
+
+        $this->total_days = max(1, (int) $this->pickup_date->diffInDays($billableEndDate));
         $this->subtotal = $this->daily_rate * $this->total_days;
         $this->discount_amount = $this->subtotal * ($this->discount_percentage / 100);
         $this->total_amount = $this->subtotal - $this->discount_amount + $this->additional_fees;
+    }
+
+    /**
+     * True once the vehicle came back earlier than the contracted return_date.
+     * Purely derived (not persisted) — recompute at read time is cheap and
+     * keeps it from ever drifting out of sync with the two source columns.
+     */
+    public function getIsEarlyReturnAttribute(): bool
+    {
+        return (bool) ($this->actual_return_date && $this->return_date
+            && $this->actual_return_date->lt($this->return_date));
+    }
+
+    /**
+     * Previews the billing impact of returning on $actualReturnDate without
+     * mutating or persisting anything — used to suggest a prorated amount to
+     * the agent before they confirm an early return.
+     */
+    public function previewEarlyReturn(\Carbon\Carbon $actualReturnDate): array
+    {
+        $isEarly = $actualReturnDate->lt($this->return_date);
+        $billableEndDate = $isEarly ? $actualReturnDate : $this->return_date;
+
+        $actualDays = max(1, (int) $this->pickup_date->diffInDays($billableEndDate));
+        $contractedDays = max(1, (int) $this->pickup_date->diffInDays($this->return_date));
+
+        $subtotal = $this->daily_rate * $actualDays;
+        $discountAmount = $subtotal * ($this->discount_percentage / 100);
+        $suggestedTotal = $subtotal - $discountAmount + ($this->additional_fees ?? 0);
+
+        return [
+            'is_early_return'         => $isEarly,
+            'actual_days'             => $actualDays,
+            'contracted_days'         => $contractedDays,
+            'suggested_total_amount'  => round((float) $suggestedTotal, 2),
+        ];
     }
 
     /**

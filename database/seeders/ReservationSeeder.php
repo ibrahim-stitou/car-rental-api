@@ -19,7 +19,7 @@ class ReservationSeeder extends Seeder
 
         foreach ($agencies as $agency) {
             $vehicles = Vehicle::where('agency_id', $agency->id)->get();
-            $clients = Client::where('agency_id', $agency->id)->get();
+            $clients = Client::whereHas('agencies', fn ($q) => $q->where('agencies.id', $agency->id))->get();
 
             if ($vehicles->isEmpty() || $clients->isEmpty()) continue;
 

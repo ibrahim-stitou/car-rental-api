@@ -97,7 +97,7 @@ class RoleController extends BaseController
     public function users(string $id): JsonResponse
     {
         $role = Role::findOrFail($id);
-        $users = $role->users()->with('agency')->get();
+        $users = $role->users()->with('agencies')->get();
         return $this->success($users);
     }
 
@@ -107,7 +107,7 @@ class RoleController extends BaseController
         $role = Role::findOrFail($id);
         $user = \App\Models\User::findOrFail($request->user_id);
         $user->assignRole($role);
-        return $this->success($role->users()->with('agency')->get(), 'User added to role');
+        return $this->success($role->users()->with('agencies')->get(), 'User added to role');
     }
 
     public function detachUser(string $id, string $userId): JsonResponse
@@ -115,7 +115,7 @@ class RoleController extends BaseController
         $role = Role::findOrFail($id);
         $user = \App\Models\User::findOrFail($userId);
         $user->removeRole($role);
-        return $this->success($role->users()->with('agency')->get(), 'User removed from role');
+        return $this->success($role->users()->with('agencies')->get(), 'User removed from role');
     }
 }
 

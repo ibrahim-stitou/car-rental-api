@@ -37,6 +37,7 @@ class ParameterSeeder extends Seeder
             'salary'         => 'Salaire',
             'rent'           => 'Loyer',
             'utilities'      => 'Charges',
+            'claim'          => 'Sinistre',
             'other'          => 'Autre',
         ];
         foreach ($expenseCategories as $value => $label) {

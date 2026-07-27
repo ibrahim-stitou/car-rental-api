@@ -216,7 +216,7 @@ class NotificationController extends BaseController
         // Envoi à une agence
         if ($request->filled('agency_id')) {
             $this->service->sendToAgency($request->agency_id, NotificationType::SYSTEM_ALERT, $payload, $request->roles ?? []);
-            $agencyCount = \App\Models\User::where('agency_id', $request->agency_id)->where('is_active', true)->count();
+            $agencyCount = \App\Models\User::whereHas('agencies', fn ($a) => $a->where('agencies.id', $request->agency_id))->where('is_active', true)->count();
             $count += $agencyCount;
         }
 

@@ -150,7 +150,7 @@ class AuthController extends BaseController
     public function me(): JsonResponse
     {
         $user = auth('api')->user();
-        $user->load('agency');
+        $user->load('agencies');
 
         return $this->success([
             'id'          => $user->id,
@@ -160,7 +160,7 @@ class AuthController extends BaseController
             'email'       => $user->email,
             'phone'       => $user->phone,
             'is_active'   => $user->is_active,
-            'agency'      => $user->agency,
+            'agencies'    => $user->agencies,
             'roles'       => $user->getRoleNames(),
             'permissions' => $user->getAllPermissions()->pluck('name'),
             'avatar'      => $user->getFirstMediaUrl('avatar'),
@@ -249,6 +249,8 @@ class AuthController extends BaseController
 
     protected function tokenData(string $token, $user): array
     {
+        $user->loadMissing('agencies');
+
         return [
             'access_token' => $token,
             'token_type'   => 'bearer',
@@ -261,6 +263,7 @@ class AuthController extends BaseController
                 'email'       => $user->email,
                 'roles'       => $user->getRoleNames(),
                 'permissions' => $user->getAllPermissions()->pluck('name'),
+                'agencies'    => $user->agencies,
             ],
         ];
     }

@@ -128,7 +128,7 @@ class DashboardController extends BaseController
 
     private function clientStats(?string $agencyId): array
     {
-        $q = Client::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
+        $q = Client::query()->when($agencyId, fn($q) => $q->whereHas('agencies', fn($a) => $a->where('agencies.id', $agencyId)));
 
         return [
             'total'       => (clone $q)->count(),

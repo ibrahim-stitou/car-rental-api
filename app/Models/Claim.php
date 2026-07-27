@@ -25,6 +25,7 @@ class Claim extends Model implements HasMedia, Auditable
         'status',
         'total_damage_amount', 'insurance_amount_recovered', 'client_paid_amount', 'company_expense_amount',
         'insurance_reference', 'insurance_claim_date', 'settlement_date',
+        'expense_id',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -73,6 +74,7 @@ class Claim extends Model implements HasMedia, Auditable
     public function client(): BelongsTo     { return $this->belongsTo(Client::class); }
     public function maintenance(): BelongsTo { return $this->belongsTo(Maintenance::class); }
     public function creator(): BelongsTo    { return $this->belongsTo(User::class, 'created_by'); }
+    public function expense(): BelongsTo    { return $this->belongsTo(Expense::class); }
 
     // Media
     public function registerMediaCollections(): void

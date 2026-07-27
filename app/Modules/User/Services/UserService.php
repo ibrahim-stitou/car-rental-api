@@ -16,9 +16,9 @@ class UserService
 
     public function datatable(array $filters = [])
     {
-        return $this->repository->datatable($filters, ['agency', 'roles'], function ($dataTable) {
+        return $this->repository->datatable($filters, ['agencies', 'roles'], function ($dataTable) {
             $dataTable->addColumn('full_name', fn($u) => $u->full_name)
-                ->addColumn('agency_name', fn($u) => $u->agency?->name ?? '—')
+                ->addColumn('agency_name', fn($u) => $u->agencies->pluck('name')->join(', ') ?: '—')
                 ->addColumn('roles_list', fn($u) => $u->roles->pluck('name')->join(', '))
                 ->addColumn('active_status', fn($u) => $u->is_active ? 'Actif' : 'Inactif');
         });
@@ -26,26 +26,32 @@ class UserService
 
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->paginate($perPage, $filters, ['agency', 'roles']);
+        return $this->repository->paginate($perPage, $filters, ['agencies', 'roles']);
     }
 
     public function search(string $term, int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->search($term, $this->repository->getSearchFields(), ['agency', 'roles'], $perPage);
+        return $this->repository->search($term, $this->repository->getSearchFields(), ['agencies', 'roles'], $perPage);
     }
 
     public function find(string $id): User
     {
-        return $this->repository->findByIdOrFail($id, ['agency', 'roles', 'permissions']);
+        return $this->repository->findByIdOrFail($id, ['agencies', 'roles', 'permissions']);
     }
 
     public function create(array $data): User
     {
+        $agencyIds = $data['agency_ids'] ?? null;
+        unset($data['agency_ids']);
+
         $user = $this->repository->create($data);
+        if ($agencyIds !== null) {
+            $user->agencies()->sync($agencyIds);
+        }
         if (!empty($data['role'])) {
             $user->assignRole($data['role']);
         }
-        $user = $user->fresh(['roles']);
+        $user = $user->fresh(['roles', 'agencies']);
 
         $this->notificationService->notifyUserCreated($user);
 
@@ -54,7 +60,15 @@ class UserService
 
     public function update(string $id, array $data): User
     {
-        return $this->repository->update($id, $data);
+        $agencyIds = $data['agency_ids'] ?? null;
+        unset($data['agency_ids']);
+
+        $user = $this->repository->update($id, $data);
+        if ($agencyIds !== null) {
+            $user->agencies()->sync($agencyIds);
+            $user = $user->fresh(['agencies']);
+        }
+        return $user;
     }
 
     public function delete(string $id): bool

@@ -8,6 +8,7 @@ use Database\Factories\AgencyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -37,9 +38,18 @@ class Agency extends Model implements HasMedia, Auditable
     // Relations
     public function manager(): BelongsTo { return $this->belongsTo(User::class, 'manager_id'); }
     public function vehicles(): HasMany { return $this->hasMany(Vehicle::class); }
-    public function clients(): HasMany { return $this->hasMany(Client::class); }
+    public function clients(): BelongsToMany
+    {
+        return $this->belongsToMany(Client::class, 'agency_client')->using(AgencyClient::class);
+    }
     public function reservations(): HasMany { return $this->hasMany(Reservation::class); }
-    public function users(): HasMany { return $this->hasMany(User::class); }
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'agency_user')
+            ->using(AgencyUser::class)
+            ->withPivot(['stamp_path', 'signature_path'])
+            ->withTimestamps();
+    }
 
     // Media
     public function registerMediaCollections(): void

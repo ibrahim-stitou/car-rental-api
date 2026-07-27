@@ -53,6 +53,7 @@ class ReservationResource extends JsonResource
             'fuel_level_pickup'   => $this->fuel_level_pickup,
             'fuel_level_return'   => $this->fuel_level_return,
             'is_overdue'          => $this->isOverdue(),
+            'is_early_return'     => $this->is_early_return,
             'notes'               => $this->notes,
             'cancellation_reason' => $this->cancellation_reason,
             'contract'            => $this->getFirstMediaUrl('contract'),

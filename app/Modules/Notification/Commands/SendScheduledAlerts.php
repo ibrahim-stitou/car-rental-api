@@ -232,7 +232,7 @@ class SendScheduledAlerts extends Command
             ->whereNotNull('driving_license_expiry')
             ->where('driving_license_expiry', '>=', now())
             ->where('driving_license_expiry', '<=', now()->addDays($days))
-            ->with(['agency'])
+            ->with(['agencies'])
             ->get();
 
         foreach ($clients as $client) {

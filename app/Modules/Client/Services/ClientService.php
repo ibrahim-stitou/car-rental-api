@@ -16,9 +16,9 @@ class ClientService
 
     public function datatable(array $filters = [])
     {
-        return $this->repository->datatable($filters, ['agency'], function ($dataTable) {
+        return $this->repository->datatable($filters, ['agencies'], function ($dataTable) {
             $dataTable->addColumn('full_name', fn($c) => $c->full_name)
-                ->addColumn('agency_name', fn($c) => $c->agency?->name ?? '—')
+                ->addColumn('agency_name', fn($c) => $c->agencies->pluck('name')->join(', ') ?: '—')
                 ->addColumn('is_license_valid', fn($c) => $c->is_license_valid ? 'Oui' : 'Non')
                 ->addColumn('blacklisted', fn($c) => $c->is_blacklisted ? 'Oui' : 'Non');
         });
@@ -26,28 +26,41 @@ class ClientService
 
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->paginate($perPage, $filters, ['agency', 'creator']);
+        return $this->repository->paginate($perPage, $filters, ['agencies', 'creator']);
     }
 
     public function search(string $term, int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->search($term, $this->repository->getSearchFields(), ['agency'], $perPage);
+        return $this->repository->search($term, $this->repository->getSearchFields(), ['agencies'], $perPage);
     }
 
     public function find(string $id): Client
     {
-        return $this->repository->findByIdOrFail($id, ['agency', 'creator', 'reservations']);
+        return $this->repository->findByIdOrFail($id, ['agencies', 'creator', 'reservations']);
     }
 
     public function create(array $data): Client
     {
+        $agencyIds = $data['agency_ids'] ?? [];
+        unset($data['agency_ids']);
+
         $data['created_by'] = auth('api')->id();
-        return $this->repository->create($data);
+        $client = $this->repository->create($data);
+        $client->agencies()->sync($agencyIds);
+        return $client->fresh(['agencies']);
     }
 
     public function update(string $id, array $data): Client
     {
-        return $this->repository->update($id, $data);
+        $agencyIds = $data['agency_ids'] ?? null;
+        unset($data['agency_ids']);
+
+        $client = $this->repository->update($id, $data);
+        if ($agencyIds !== null) {
+            $client->agencies()->sync($agencyIds);
+            $client = $client->fresh(['agencies']);
+        }
+        return $client;
     }
 
     public function delete(string $id): bool
@@ -80,6 +93,6 @@ class ClientService
 
     public function blacklisted(int $perPage = 15): LengthAwarePaginator
     {
-        return Client::blacklisted()->with('agency')->paginate($perPage);
+        return Client::blacklisted()->with('agencies')->paginate($perPage);
     }
 }

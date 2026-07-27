@@ -20,7 +20,6 @@ class ClientFactory extends Factory
     public function definition(): array
     {
         return [
-            'agency_id'                => Agency::factory(),
             'first_name'               => fake()->firstName(),
             'last_name'                => fake()->lastName(),
             'email'                    => fake()->unique()->safeEmail(),
@@ -46,5 +45,14 @@ class ClientFactory extends Factory
             'is_blacklisted'  => true,
             'blacklist_reason' => fake()->sentence(),
         ]);
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Client $client) {
+            if ($client->agencies()->count() === 0) {
+                $client->agencies()->attach(Agency::factory()->create());
+            }
+        });
     }
 }

@@ -4,6 +4,7 @@ namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
 use App\Models\Expense;
+use App\Models\Reservation;
 use App\Modules\Agency\Requests\StoreAgencyRequest;
 use App\Modules\Agency\Requests\UpdateAgencyRequest;
 use App\Modules\Agency\Resources\AgencyResource;
@@ -208,8 +209,16 @@ class AgencyController extends BaseController
         return $this->success(new AgencyResource($agency), 'Agency restored successfully');
     }
 
-    public function statistics(string $id): JsonResponse
+    public function statistics(Request $request, string $id): JsonResponse
     {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date'   => 'nullable|date|after_or_equal:start_date',
+        ]);
+
+        $startDate = $request->input('start_date');
+        $endDate   = $request->input('end_date');
+
         $agency = $this->service->find($id);
 
         $vq = $agency->vehicles();
@@ -217,17 +226,18 @@ class AgencyController extends BaseController
 
         $totalRevenue = (float) (clone $rq)->whereIn('status', ['completed'])
             ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')
+            ->when($startDate, fn($q) => $q->whereDate('reservation_payments.payment_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->whereDate('reservation_payments.payment_date', '<=', $endDate))
             ->sum('reservation_payments.amount');
 
-        $creditReservations = (clone $rq)->whereIn('status', ['completed', 'active'])
-            ->selectRaw('reservations.id, reservation_number, total_amount, COALESCE(SUM(rp.amount),0) as paid_amount, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
-            ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
-            ->groupBy('reservations.id', 'reservation_number', 'total_amount')
-            ->havingRaw('credit_amount > 0')
-            ->get();
+        // Outstanding credit is a point-in-time balance ("as of today"), not filtered by the period.
+        $creditReservations = $this->creditReservationsQuery($rq);
 
         $totalCredit = $creditReservations->sum('credit_amount');
-        $totalExpenses = (float) Expense::where('agency_id', $id)->sum('amount');
+        $totalExpenses = (float) Expense::where('agency_id', $id)
+            ->when($startDate, fn($q) => $q->whereDate('expense_date', '>=', $startDate))
+            ->when($endDate, fn($q) => $q->whereDate('expense_date', '<=', $endDate))
+            ->sum('amount');
 
         return $this->success([
             'agency'  => new AgencyResource($agency),
@@ -254,12 +264,64 @@ class AgencyController extends BaseController
                 'net_revenue'    => $totalRevenue - $totalExpenses,
                 'total_credit'   => (float) $totalCredit,
                 'credit_count'   => $creditReservations->count(),
+                'period'         => [
+                    'start_date' => $startDate,
+                    'end_date'   => $endDate,
+                ],
             ],
             'clients' => [
                 'total'       => $agency->clients()->count(),
                 'blacklisted' => $agency->clients()->where('is_blacklisted', true)->count(),
             ],
         ]);
+    }
+
+    /**
+     * Lists the reservations (contracts) that make up this agency's outstanding
+     * client credit — contracts are the only source of credit, so this is the
+     * detail view behind the "Crédit client" KPI.
+     */
+    public function credits(string $id): JsonResponse
+    {
+        $agency = $this->service->find($id);
+        $creditRows = $this->creditReservationsQuery($agency->reservations());
+
+        $reservations = Reservation::whereIn('id', $creditRows->pluck('id'))
+            ->with(['client:id,first_name,last_name', 'vehicle:id,brand,model,registration_number'])
+            ->get()
+            ->keyBy('id');
+
+        $result = $creditRows->map(function ($row) use ($reservations) {
+            $reservation = $reservations->get($row->id);
+            return [
+                'id'                 => $row->id,
+                'reservation_number' => $row->reservation_number,
+                'status'             => $reservation?->status,
+                'pickup_date'        => $reservation?->pickup_date,
+                'return_date'        => $reservation?->return_date,
+                'client'             => $reservation?->client,
+                'vehicle'            => $reservation?->vehicle,
+                'total_amount'       => (float) $row->total_amount,
+                'paid_amount'        => (float) $row->paid_amount,
+                'credit_amount'      => (float) $row->credit_amount,
+            ];
+        })->sortByDesc('credit_amount')->values();
+
+        return $this->success($result);
+    }
+
+    /**
+     * Reservations (of the given agency-scoped query) whose paid amount is
+     * still short of their total — the sole source of client credit.
+     */
+    private function creditReservationsQuery($reservationsQuery)
+    {
+        return (clone $reservationsQuery)->whereIn('status', ['completed', 'active'])
+            ->selectRaw('reservations.id, reservation_number, total_amount, COALESCE(SUM(rp.amount),0) as paid_amount, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+            ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
+            ->groupBy('reservations.id', 'reservation_number', 'total_amount')
+            ->havingRaw('credit_amount > 0')
+            ->get();
     }
 }
 

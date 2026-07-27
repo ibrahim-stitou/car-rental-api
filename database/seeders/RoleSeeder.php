@@ -39,6 +39,7 @@ class RoleSeeder extends Seeder
             'view-expense', 'create-expense', 'edit-expense',
             'view-billing', 'create-billing', 'edit-billing', 'approve-billing',
             'view-user', 'view-logs', 'view-parameter', 'view-dashboard',
+            'view-notification', 'view-reports',
         ]);
 
         // Agent — création de réservations et gestion clients
@@ -50,6 +51,7 @@ class RoleSeeder extends Seeder
             'confirm-reservation', 'activate-reservation', 'complete-reservation',
             'view-maintenance', 'view-insurance', 'view-vignette', 'view-technical-inspection',
             'view-claim', 'create-claim', 'view-expense', 'view-dashboard',
+            'view-notification',
         ]);
 
         // Viewer — lecture seule
@@ -58,6 +60,7 @@ class RoleSeeder extends Seeder
             'view-agency', 'view-vehicle', 'view-client', 'view-reservation',
             'view-maintenance', 'view-insurance', 'view-vignette', 'view-technical-inspection',
             'view-claim', 'view-expense', 'view-dashboard',
+            'view-notification',
         ]);
     }
 }

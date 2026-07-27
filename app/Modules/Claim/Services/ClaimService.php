@@ -3,6 +3,7 @@
 namespace App\Modules\Claim\Services;
 
 use App\Models\Claim;
+use App\Models\Expense;
 use App\Modules\Claim\Repositories\ClaimRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -40,12 +41,16 @@ class ClaimService
 
     public function create(array $data): Claim
     {
-        return $this->repository->create($data);
+        $claim = $this->repository->create($data);
+        $this->syncExpense($claim);
+        return $claim;
     }
 
     public function update(string $id, array $data): Claim
     {
-        return $this->repository->update($id, $data);
+        $claim = $this->repository->update($id, $data);
+        $this->syncExpense($claim);
+        return $claim;
     }
 
     public function delete(string $id): bool
@@ -56,6 +61,36 @@ class ClaimService
     public function updateStatus(string $id, string $status): Claim
     {
         return $this->repository->update($id, ['status' => $status]);
+    }
+
+    /**
+     * Creates or updates the Expense record linked to this claim so that
+     * the company's share of the damage cost is also reflected as a typed expense.
+     */
+    private function syncExpense(Claim $claim): void
+    {
+        $amount = $claim->company_expense_amount;
+        if (!$amount || (float) $amount <= 0) {
+            return;
+        }
+
+        $attributes = [
+            'agency_id'    => $claim->vehicle?->agency_id,
+            'vehicle_id'   => $claim->vehicle_id,
+            'recorded_by'  => $claim->created_by,
+            'title'        => 'Sinistre: ' . $claim->title,
+            'category'     => 'claim',
+            'amount'       => $amount,
+            'expense_date' => $claim->claim_date ?? now(),
+        ];
+
+        if ($claim->expense_id) {
+            Expense::where('id', $claim->expense_id)->update($attributes);
+            return;
+        }
+
+        $expense = Expense::create($attributes);
+        $claim->update(['expense_id' => $expense->id]);
     }
 
     public function statistics(): array

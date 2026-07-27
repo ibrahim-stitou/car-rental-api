@@ -2,6 +2,7 @@
 
 namespace App\Modules\Maintenance\Services;
 
+use App\Models\Expense;
 use App\Models\Maintenance;
 use App\Modules\Maintenance\Repositories\MaintenanceRepository;
 use App\Modules\Notification\Services\NotificationService;
@@ -42,6 +43,8 @@ class MaintenanceService
             $maintenance->vehicle->update(['status' => 'maintenance']);
         }
 
+        $this->syncExpense($maintenance);
+
         $this->notificationService->notifyMaintenanceScheduled($maintenance);
 
         return $maintenance;
@@ -49,7 +52,9 @@ class MaintenanceService
 
     public function update(string $id, array $data): Maintenance
     {
-        return $this->repository->update($id, $data);
+        $maintenance = $this->repository->update($id, $data);
+        $this->syncExpense($maintenance);
+        return $maintenance;
     }
 
     public function delete(string $id): bool
@@ -67,9 +72,41 @@ class MaintenanceService
         $maintenance->vehicle->update(['status' => 'available']);
         $maintenance = $maintenance->fresh();
 
+        $this->syncExpense($maintenance);
+
         $this->notificationService->notifyMaintenanceCompleted($maintenance);
 
         return $maintenance;
+    }
+
+    /**
+     * Creates or updates the Expense record linked to this maintenance so that
+     * maintenance costs are also reflected as typed expenses.
+     */
+    private function syncExpense(Maintenance $maintenance): void
+    {
+        $amount = $maintenance->actual_cost ?? $maintenance->cost;
+        if (!$amount || (float) $amount <= 0) {
+            return;
+        }
+
+        $attributes = [
+            'agency_id'    => $maintenance->vehicle?->agency_id,
+            'vehicle_id'   => $maintenance->vehicle_id,
+            'recorded_by'  => $maintenance->created_by,
+            'title'        => 'Maintenance: ' . $maintenance->title,
+            'category'     => 'maintenance',
+            'amount'       => $amount,
+            'expense_date' => $maintenance->completion_date ?? $maintenance->maintenance_date ?? now(),
+        ];
+
+        if ($maintenance->expense_id) {
+            Expense::where('id', $maintenance->expense_id)->update($attributes);
+            return;
+        }
+
+        $expense = Expense::create($attributes);
+        $maintenance->update(['expense_id' => $expense->id]);
     }
 
     public function cancel(string $id): Maintenance

@@ -28,7 +28,6 @@ class UserSeeder extends Seeder
 
         // Admin
         $admin = User::firstOrCreate(['email' => 'admin@ges-cars.ma'], [
-            'agency_id'  => $agency?->id,
             'first_name' => 'Admin',
             'last_name'  => 'User',
             'password'   => 'password',
@@ -36,10 +35,12 @@ class UserSeeder extends Seeder
             'is_active'  => true,
         ]);
         $admin->syncRoles([Role::findByName('admin', 'api')]);
+        if ($agency) {
+            $admin->agencies()->syncWithoutDetaching([$agency->id]);
+        }
 
         // Agent
         $agent = User::firstOrCreate(['email' => 'agent@ges-cars.ma'], [
-            'agency_id'  => $agency?->id,
             'first_name' => 'Agent',
             'last_name'  => 'User',
             'password'   => 'password',
@@ -47,5 +48,8 @@ class UserSeeder extends Seeder
             'is_active'  => true,
         ]);
         $agent->syncRoles([Role::findByName('agent', 'api')]);
+        if ($agency) {
+            $agent->agencies()->syncWithoutDetaching([$agency->id]);
+        }
     }
 }

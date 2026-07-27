@@ -114,6 +114,12 @@ class PermissionSeeder extends Seeder
             'Tableau de bord' => [
                 'view-dashboard' => 'Voir le tableau de bord',
             ],
+            'Notifications' => [
+                'view-notification' => 'Voir les notifications',
+            ],
+            'Rapports' => [
+                'view-reports' => 'Voir les rapports',
+            ],
         ];
 
         foreach ($catalog as $module => $permissions) {

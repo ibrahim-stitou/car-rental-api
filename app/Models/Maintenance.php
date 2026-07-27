@@ -26,6 +26,7 @@ class Maintenance extends Model implements HasMedia, Auditable
         'mileage_at_service', 'next_service_mileage', 'next_service_date',
         'next_oil_change_mileage', 'tire_position',
         'cost', 'actual_cost', 'service_provider', 'status', 'priority', 'created_by',
+        'expense_id',
     ];
 
     protected $auditExclude = ['updated_at'];
@@ -68,6 +69,7 @@ class Maintenance extends Model implements HasMedia, Auditable
     {
         return $this->hasOne(Claim::class);
     }
+    public function expense(): BelongsTo { return $this->belongsTo(Expense::class); }
 
     // Media
     public function registerMediaCollections(): void

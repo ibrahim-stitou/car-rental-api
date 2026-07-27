@@ -167,9 +167,25 @@ class ReservationController extends BaseController
             'actual_return_location'  => 'nullable|string|max:255',
             'is_favorable'            => 'nullable|boolean',
             'closure_comment'         => 'nullable|string',
+            'final_total_amount'      => 'nullable|numeric|min:0',
         ]);
         $reservation = $this->service->complete($id, $data);
         return $this->success(new ReservationResource($reservation), 'Reservation completed (return done)');
+    }
+
+    /**
+     * @OA\Get(path="/reservations/{id}/early-return-preview", summary="Aperçu du montant en cas de retour anticipé", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Parameter(name="actual_return_date", in="query", required=true, @OA\Schema(type="string", format="date")),
+     *   @OA\Response(response=200, description="Success")
+     * )
+     */
+    public function earlyReturnPreview(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['actual_return_date' => 'required|date']);
+        $reservation = $this->service->find($id);
+        $preview = $reservation->previewEarlyReturn(\Carbon\Carbon::parse($request->actual_return_date));
+        return $this->success($preview);
     }
 
     /**

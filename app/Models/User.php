@@ -5,7 +5,7 @@ namespace App\Models;
 use App\Core\Traits\HasUuid;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Auth\Passwords\CanResetPassword;
@@ -26,9 +26,8 @@ class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, C
     use HasFactory, Notifiable, HasUuid, SoftDeletes, HasRoles, InteractsWithMedia, AuditableTrait, CanResetPassword;
 
     protected $fillable = [
-        'agency_id', 'first_name', 'last_name', 'email',
+        'first_name', 'last_name', 'email',
         'password', 'phone', 'is_active', 'last_login_at',
-        'signature_path', 'stamp_path',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -53,7 +52,13 @@ class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, C
         return "{$this->first_name} {$this->last_name}";
     }
 
-    public function agency(): BelongsTo { return $this->belongsTo(Agency::class); }
+    public function agencies(): BelongsToMany
+    {
+        return $this->belongsToMany(Agency::class, 'agency_user')
+            ->using(AgencyUser::class)
+            ->withPivot(['stamp_path', 'signature_path'])
+            ->withTimestamps();
+    }
     public function managedAgencies(): HasMany { return $this->hasMany(Agency::class, 'manager_id'); }
 
     public function registerMediaCollections(): void
@@ -61,17 +66,6 @@ class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, C
         $this->addMediaCollection('avatar')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
-        $this->addMediaCollection('signature')
-            ->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
-        $this->addMediaCollection('stamp')
-            ->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
-    }
-
-    public function hasSignature(): bool
-    {
-        return $this->getFirstMediaUrl('signature') !== '';
     }
 
     public function registerMediaConversions(?Media $media = null): void

@@ -24,7 +24,8 @@ class StoreClientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'agency_id'                => 'required|uuid|exists:agencies,id',
+            'agency_ids'               => 'required|array|min:1',
+            'agency_ids.*'             => 'uuid|exists:agencies,id',
             'first_name'               => 'required|string|max:255',
             'last_name'                => 'required|string|max:255',
             'email'                    => 'nullable|email|unique:clients,email',

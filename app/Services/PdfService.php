@@ -9,6 +9,7 @@ use ArPHP\I18N\Arabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use NumberToWords\NumberToWords;
 
 class PdfService
@@ -136,16 +137,16 @@ class PdfService
 
         $signatureDataUrl = null;
         $stampDataUrl = null;
-        if ($reservation->validator) {
-            $signatureMedia = $reservation->validator->getFirstMedia('signature');
-            if ($signatureMedia && file_exists($signatureMedia->getPath())) {
-                $signatureDataUrl = 'data:' . $signatureMedia->mime_type . ';base64,'
-                    . base64_encode(file_get_contents($signatureMedia->getPath()));
+        if ($reservation->validator && $reservation->agency_id) {
+            $membership = $reservation->validator->agencies()
+                ->where('agencies.id', $reservation->agency_id)
+                ->first();
+
+            if ($membership?->pivot->signature_path) {
+                $signatureDataUrl = $this->diskFileToDataUrl($membership->pivot->signature_path);
             }
-            $stampMedia = $reservation->validator->getFirstMedia('stamp');
-            if ($stampMedia && file_exists($stampMedia->getPath())) {
-                $stampDataUrl = 'data:' . $stampMedia->mime_type . ';base64,'
-                    . base64_encode(file_get_contents($stampMedia->getPath()));
+            if ($membership?->pivot->stamp_path) {
+                $stampDataUrl = $this->diskFileToDataUrl($membership->pivot->stamp_path);
             }
         }
 
@@ -164,6 +165,15 @@ class PdfService
             'arabicFontRegular' => $this->localFontUrl('Amiri-Regular.ttf'),
             'arabicFontBold'    => $this->localFontUrl('Amiri-Bold.ttf'),
         ];
+    }
+
+    private function diskFileToDataUrl(string $path): ?string
+    {
+        if (!Storage::disk('public')->exists($path)) {
+            return null;
+        }
+        $mimeType = Storage::disk('public')->mimeType($path) ?: 'image/png';
+        return 'data:' . $mimeType . ';base64,' . base64_encode(Storage::disk('public')->get($path));
     }
 
     /**

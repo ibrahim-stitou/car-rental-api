@@ -223,23 +223,25 @@
     <table class="items" cellspacing="0" cellpadding="0">
         <thead>
             <tr>
-                <th class="c" style="width:8%">Qté</th>
-                <th style="width:54%">Désignation</th>
+                <th class="c" style="width:6%">Réf</th>
+                <th style="width:40%">Désignation</th>
+                <th class="c" style="width:18%">Unité</th>
                 <th class="r" style="width:18%">P.U. HT</th>
-                <th class="r" style="width:20%">Montant HT</th>
+                <th class="r" style="width:18%">P.U. TTC</th>
             </tr>
         </thead>
         <tbody>
             @forelse($document->items as $loop_item)
                 <tr class="{{ $loop->even ? 'even' : 'odd' }}">
-                    <td class="c">{{ $loop_item->quantity }}</td>
+                    <td class="c">{{ $loop->iteration }}</td>
                     <td>{{ $loop_item->description }}</td>
-                    <td class="r">{{ number_format((float)$loop_item->unit_price,  2, ',', ' ') }}</td>
-                    <td class="r">{{ number_format((float)$loop_item->total_price, 2, ',', ' ') }}</td>
+                    <td class="c">{{ $loop_item->quantity }}{{ $loop_item->unit ? ' ' . $loop_item->unit : '' }}</td>
+                    <td class="r">{{ number_format((float)$loop_item->unit_price, 2, ',', ' ') }}</td>
+                    <td class="r">{{ number_format((float)$loop_item->unit_price * (1 + (float)$loop_item->tax_rate / 100), 2, ',', ' ') }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" style="text-align:center; color:#888; padding:14px;">Aucun article</td>
+                    <td colspan="5" style="text-align:center; color:#888; padding:14px;">Aucun article</td>
                 </tr>
             @endforelse
         </tbody>

@@ -31,6 +31,7 @@ class StoreBillingDocumentRequest extends FormRequest
             'items'                    => 'required|array|min:1',
             'items.*.description'      => 'required|string',
             'items.*.quantity'         => 'required|integer|min:1',
+            'items.*.unit'             => 'nullable|string|max:50',
             'items.*.unit_price'       => 'required|numeric|min:0',
             'items.*.tax_rate'         => 'nullable|numeric|min:0|max:100',
             'items.*.notes'            => 'nullable|string',

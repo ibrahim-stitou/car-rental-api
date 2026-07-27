@@ -11,9 +11,11 @@ class UserResource extends JsonResource
     {
         return [
             'id'          => $this->id,
-            'agency'      => $this->whenLoaded('agency', fn() => [
-                'id' => $this->agency->id, 'name' => $this->agency->name,
-            ]),
+            'agencies'    => $this->whenLoaded('agencies', fn() => $this->agencies->map(fn($a) => [
+                'id' => $a->id, 'name' => $a->name,
+                'stamp_url' => $a->pivot->stamp_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($a->pivot->stamp_path) : null,
+                'signature_url' => $a->pivot->signature_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($a->pivot->signature_path) : null,
+            ])),
             'first_name'  => $this->first_name,
             'last_name'   => $this->last_name,
             'full_name'   => $this->full_name,
@@ -22,13 +24,8 @@ class UserResource extends JsonResource
             'is_active'   => $this->is_active,
             'roles'       => $this->whenLoaded('roles', fn() => $this->getRoleNames()),
             'permissions' => $this->whenLoaded('permissions', fn() => $this->getAllPermissions()->pluck('name')),
-            'agency_id'   => $this->agency_id,
             'avatar'      => $this->getFirstMediaUrl('avatar'),
             'avatar_thumb'=> $this->getFirstMediaUrl('avatar', 'thumb'),
-            'signature'   => $this->getFirstMediaUrl('signature') ?: null,
-            'stamp'       => $this->getFirstMediaUrl('stamp') ?: null,
-            'has_signature' => $this->hasSignature(),
-            'has_stamp'     => $this->getFirstMediaUrl('stamp') !== '',
             'last_login_at' => $this->last_login_at?->toISOString(),
             'created_at'    => $this->created_at?->toISOString(),
             'updated_at'    => $this->updated_at?->toISOString(),

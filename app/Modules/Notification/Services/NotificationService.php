@@ -37,7 +37,7 @@ class NotificationService
      */
     public function sendToAgency(string $agencyId, NotificationType $type, array $payload = [], array $roles = []): void
     {
-        $query = User::where('agency_id', $agencyId)->where('is_active', true);
+        $query = User::whereHas('agencies', fn ($a) => $a->where('agencies.id', $agencyId))->where('is_active', true);
         if (!empty($roles)) {
             $query->whereHas('roles', fn ($r) => $r->where('guard_name', 'api')->whereIn('name', $roles));
         }
@@ -54,7 +54,7 @@ class NotificationService
      */
     public function sendToAgencyByPermission(string $agencyId, NotificationType $type, array $payload = [], array $permissions = []): void
     {
-        $query = User::where('agency_id', $agencyId)->where('is_active', true);
+        $query = User::whereHas('agencies', fn ($a) => $a->where('agencies.id', $agencyId))->where('is_active', true);
         $this->scopeAnyPermission($query, $permissions);
         $users = $query->get();
         $this->sendToUsers($users, $type, $payload);
@@ -505,7 +505,7 @@ class NotificationService
 
     public function notifyClientBlacklisted(\App\Models\Client $client): void
     {
-        $client->loadMissing(['agency']);
+        $client->loadMissing(['agencies']);
         $payload = [
             'title'       => "Client mis en liste noire : {$client->full_name}",
             'body'        => "Motif : {$client->blacklist_reason}",
@@ -513,14 +513,14 @@ class NotificationService
             'entity_id'   => $client->id,
             'action_url'  => "/clients/{$client->id}",
         ];
-        if ($client->agency_id) {
-            $this->sendToAgencyByPermission($client->agency_id, NotificationType::CLIENT_BLACKLISTED, $payload, ['view-client']);
+        foreach ($client->agencies as $agency) {
+            $this->sendToAgencyByPermission($agency->id, NotificationType::CLIENT_BLACKLISTED, $payload, ['view-client']);
         }
     }
 
     public function notifyClientLicenseExpiring(\App\Models\Client $client): void
     {
-        $client->loadMissing(['agency']);
+        $client->loadMissing(['agencies']);
         $daysLeft = (int) now()->diffInDays($client->driving_license_expiry, false);
         $payload = [
             'title'       => "Permis de {$client->full_name} expire dans {$daysLeft} jours",
@@ -529,8 +529,8 @@ class NotificationService
             'entity_id'   => $client->id,
             'action_url'  => "/clients/{$client->id}",
         ];
-        if ($client->agency_id) {
-            $this->sendToAgencyByPermission($client->agency_id, NotificationType::CLIENT_LICENSE_EXPIRING, $payload, ['view-client']);
+        foreach ($client->agencies as $agency) {
+            $this->sendToAgencyByPermission($agency->id, NotificationType::CLIENT_LICENSE_EXPIRING, $payload, ['view-client']);
         }
     }
 

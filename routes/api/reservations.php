@@ -19,6 +19,7 @@ Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::patch('/{id}/confirm',          [ReservationController::class, 'confirm'])->middleware('permission:confirm-reservation');
     Route::patch('/{id}/activate',         [ReservationController::class, 'activate'])->middleware('permission:activate-reservation');
     Route::patch('/{id}/complete',         [ReservationController::class, 'complete'])->middleware('permission:complete-reservation');
+    Route::get('/{id}/early-return-preview', [ReservationController::class, 'earlyReturnPreview'])->middleware('permission:complete-reservation');
     Route::patch('/{id}/cancel',           [ReservationController::class, 'cancel'])->middleware('permission:cancel-reservation');
     Route::patch('/{id}/no-show',          [ReservationController::class, 'noShow'])->middleware('permission:cancel-reservation');
     Route::post('/{id}/contract',          [ReservationController::class, 'uploadContract'])->middleware('permission:edit-reservation');
