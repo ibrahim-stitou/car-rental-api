@@ -26,12 +26,7 @@ class ClientController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        if ($request->filled('search')) {
-            $data = $this->service->search($request->search, $request->integer('per_page', 15));
-            return $this->paginated($data, ClientResource::class);
-        }
-
-        $filters = $request->only(['agency_id', 'is_blacklisted', 'city']);
+        $filters = $request->only(['agency_id', 'is_blacklisted', 'city', 'search']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, ClientResource::class);
     }

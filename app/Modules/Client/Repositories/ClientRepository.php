@@ -25,6 +25,25 @@ class ClientRepository extends BaseRepository
             $query->whereHas('agencies', fn ($q) => $q->where('agencies.id', $agencyId));
             unset($filters['agency_id']);
         }
+
+        if (!empty($filters['search'])) {
+            $term = $filters['search'];
+            unset($filters['search']);
+            // Tokenized so word order doesn't matter (e.g. "Ben Ahmed" still
+            // finds a client stored as first_name=Ahmed, last_name=Ben): each
+            // word must match somewhere, but independently of the others.
+            $tokens = array_filter(preg_split('/\s+/', trim($term)) ?: []);
+            $query->where(function (Builder $outer) use ($tokens) {
+                foreach ($tokens as $token) {
+                    $outer->where(function (Builder $q) use ($token) {
+                        foreach ($this->getSearchFields() as $field) {
+                            $q->orWhere($field, 'LIKE', "%{$token}%");
+                        }
+                    });
+                }
+            });
+        }
+
         return parent::applyFilters($query, $filters);
     }
 }
