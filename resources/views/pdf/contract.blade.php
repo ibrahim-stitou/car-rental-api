@@ -78,10 +78,17 @@
         .legal-block .ar { font-size: 8px; }
 
         .sig-row-table td { padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
+        .sig-row-table tr.no-border td { border-bottom: none; }
         .sig-row-line { border-bottom: 1px solid #999; height: 16px; }
-        .sig-row-line.with-assets { height: auto; min-height: 16px; padding-top: 2px; }
-        .sig-img { max-height: 32px; max-width: 90px; vertical-align: bottom; }
-        .stamp-img { max-height: 42px; max-width: 65px; vertical-align: bottom; margin-left: 6px; opacity: 0.92; }
+        .sig-row-line.tall { height: 50px; }
+        {{-- dompdf only understands CSS 2.1, no flexbox/grid — overlap is
+             done the old way: a fixed-height position:relative box with the
+             two images position:absolute inside it, offset so the stamp
+             sits diagonally over the signature like a real stamped
+             document. --}}
+        .sig-row-line.with-assets { position: relative; height: 64px; border-bottom: none; }
+        .sig-img { position: absolute; left: 0; top: 0; max-height: 42px; max-width: 130px; }
+        .stamp-img { position: absolute; left: 45px; top: 16px; max-height: 58px; max-width: 88px; opacity: 0.85; }
 
         /* ── vehicle top rows ─────────────────────────────────── */
         .veh-two-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; width: 50%; font-size: 8.4px; }
@@ -253,10 +260,10 @@
 
             <table class="sig-row-table">
                 <tr>
-                    <td style="width:60%;">Signature de client :<div class="sig-row-line"></div></td>
+                    <td style="width:60%;">Signature de client :<div class="sig-row-line tall"></div></td>
                     <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
                 </tr>
-                <tr>
+                <tr class="{{ ($signatureDataUrl || $stampDataUrl) ? 'no-border' : '' }}">
                     <td>Signature de l'agent :
                         <div class="sig-row-line {{ ($signatureDataUrl || $stampDataUrl) ? 'with-assets' : '' }}">
                             @if($signatureDataUrl)
@@ -268,10 +275,6 @@
                         </div>
                     </td>
                     <td class="ar">{{ \App\Services\PdfService::ar('توقيع الوكيل :') }}</td>
-                </tr>
-                <tr>
-                    <td>Livrée par :<div class="sig-row-line"></div></td>
-                    <td class="ar">{{ \App\Services\PdfService::ar('سلمت من طرف :') }}</td>
                 </tr>
                 <tr>
                     <td>Livrée par :<div class="sig-row-line"></div></td>
