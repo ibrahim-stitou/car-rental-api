@@ -377,6 +377,31 @@ WHERE NOT EXISTS (SELECT 1 FROM reservations x WHERE x.legacy_id = co.id);
 
 
 -- =============================================================================
+-- SECTION 8b — Correction statut : vieux contrats "en retard" (2025 et avant)
+-- =============================================================================
+-- L'ancien système n'avait pas de fonctionnalité pour clôturer une réservation
+-- avant 2026 : son seul statut "en cours" était "Encore" (-> 'active' ci-dessus),
+-- qu'un contrat ait réellement été rendu ou non. La nouvelle application, elle,
+-- calcule automatiquement "en retard" pour toute réservation 'active' dont la
+-- date de retour est dépassée (voir Reservation::scopeOverdue / isOverdue()).
+-- Sans correction, tous ces vieux contrats de 2025 et avant remonteraient donc
+-- à tort comme des retards actifs. On les reclasse en 'completed', faute de
+-- pouvoir déterminer leur date de retour réelle.
+--
+-- NB : payment_status reste inchangé par cette correction (probablement
+-- 'pending' pour ces lignes, voir section 9) — à vérifier manuellement si
+-- besoin, la migration ne peut pas déduire si ces vieux contrats ont été
+-- réellement payés.
+
+UPDATE reservations
+SET status = 'completed'
+WHERE legacy_id IS NOT NULL
+  AND status = 'active'
+  AND return_date < CURDATE()
+  AND YEAR(pickup_date) <= 2025;
+
+
+-- =============================================================================
 -- SECTION 9 — Paiements synthétiques pour les contrats historiquement clôturés
 -- =============================================================================
 -- L'ancien système ne suivait pas les paiements séparément (juste un montant

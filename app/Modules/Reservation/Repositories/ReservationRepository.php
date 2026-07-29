@@ -35,6 +35,22 @@ class ReservationRepository extends BaseRepository
             });
         }
 
+        // Période : réservations dont le séjour [pickup_date, return_date]
+        // chevauche l'intervalle demandé (mêmes bornes que le calendrier,
+        // voir ReservationService::calendar()), pas seulement celles qui
+        // démarrent dedans.
+        if (!empty($filters['date_from'])) {
+            $dateFrom = $filters['date_from'];
+            unset($filters['date_from']);
+            $query->whereDate('return_date', '>=', $dateFrom);
+        }
+
+        if (!empty($filters['date_to'])) {
+            $dateTo = $filters['date_to'];
+            unset($filters['date_to']);
+            $query->whereDate('pickup_date', '<=', $dateTo);
+        }
+
         return parent::applyFilters($query, $filters);
     }
 }

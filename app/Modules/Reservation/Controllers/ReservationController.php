@@ -27,13 +27,15 @@ class ReservationController extends BaseController
      *   @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"pending","confirmed","active","completed","cancelled","no_show"})),
      *   @OA\Parameter(name="payment_status", in="query", @OA\Schema(type="string", enum={"pending","partial","paid","refunded"})),
      *   @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="date_from", in="query", description="Période : réservations dont le séjour chevauche cette date de début", @OA\Schema(type="string", format="date")),
+     *   @OA\Parameter(name="date_to", in="query", description="Période : réservations dont le séjour chevauche cette date de fin", @OA\Schema(type="string", format="date")),
      *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
      *   @OA\Response(response=200, description="Success")
      * )
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status', 'overdue', 'search']);
+        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status', 'overdue', 'search', 'date_from', 'date_to']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, ReservationResource::class);
     }

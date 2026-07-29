@@ -86,9 +86,9 @@
              two images position:absolute inside it, offset so the stamp
              sits diagonally over the signature like a real stamped
              document. --}}
-        .sig-row-line.with-assets { position: relative; height: 64px; border-bottom: none; }
+        .sig-row-line.with-assets { position: relative; height: 90px; border-bottom: none; }
         .sig-img { position: absolute; left: 0; top: 0; max-height: 42px; max-width: 130px; }
-        .stamp-img { position: absolute; left: 45px; top: 16px; max-height: 58px; max-width: 88px; opacity: 0.85; }
+        .stamp-img { position: absolute; left: 45px; top: 16px; max-height: 72px; max-width: 108px; opacity: 0.85; }
 
         /* ── vehicle top rows ─────────────────────────────────── */
         .veh-two-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; width: 50%; font-size: 8.4px; }
