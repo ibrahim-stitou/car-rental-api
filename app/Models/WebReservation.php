@@ -34,7 +34,7 @@ class WebReservation extends Model
 
     public function getDaysAttribute(): int
     {
-        return max(1, (int) $this->pickup_date->diffInDays($this->return_date));
+        return max(1, (int) ceil($this->pickup_date->diffInSeconds($this->return_date) / 86400));
     }
 
     public static function generateReference(): string

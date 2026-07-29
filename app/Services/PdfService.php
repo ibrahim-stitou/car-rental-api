@@ -32,7 +32,19 @@ class PdfService
     public static function ar(string $text): string
     {
         self::$arabicShaper ??= new Arabic();
-        return self::$arabicShaper->utf8Glyphs($text);
+
+        // utf8Glyphs() has its own internal plain-text word-wrap (default
+        // max_chars=50, meant for console output): past that length it
+        // splits the string into chunks at word boundaries and reverses
+        // each chunk's word order independently, joining them with "\n".
+        // Since the result is dropped into inline HTML — where actual
+        // line-wrapping is handled by CSS/dompdf and "\n" just collapses to
+        // whitespace — that internal split silently scrambles word order
+        // for any sentence longer than 50 chars (two correctly-shaped
+        // fragments end up concatenated in the wrong order). Passing a
+        // max_chars past the string's own length disables that internal
+        // wrap so the whole string is reordered as one RTL run.
+        return self::$arabicShaper->utf8Glyphs($text, mb_strlen($text) + 1);
     }
     /**
      * Shared dompdf options for the contract PDF. Font subsetting keeps

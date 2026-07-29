@@ -9,8 +9,14 @@
         @font-face { font-family: 'Amiri'; src: url('{{ $arabicFontBold }}') format('truetype'); font-weight: bold; }
 
         * { margin: 0; padding: 0; }
-        @page { margin: 14px 16px; }
+        {{-- Printers commonly have a non-printable hardware margin wider than
+             a bare @page margin accounts for, which clips content sitting
+             flush against it (reported: first letters cut off on the left).
+             The extra .page-pad wrapper below adds a safety buffer inside the
+             page margin so bordered blocks never sit on the physical edge. --}}
+        @page { margin: 18px 22px; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 8.4px; color: #000; }
+        .page-pad { padding: 0 6px; }
 
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         td, th { vertical-align: top; }
@@ -19,11 +25,19 @@
              PdfService::ar()) since dompdf has no reliable bidi/RTL engine of
              its own — it just draws whatever order it's given, left to right.
              So .ar content is plain LTR text here, only right-aligned for
-             layout; no direction/unicode-bidi properties. --}}
+             layout; no direction/unicode-bidi properties. This trick only
+             produces correct reading order for a SINGLE visual line: if the
+             browser itself has to wrap the shaped string, it breaks the line
+             using normal LTR rules, which puts the *end* of the sentence on
+             the first (top) line and the *start* on the next — i.e. reversed
+             reading order between wrapped lines. nowrap turns that failure
+             mode into visible overflow (still readable) instead of silently
+             scrambled Arabic. --}}
         .ar {
             font-family: 'Amiri', DejaVu Sans, sans-serif;
             text-align: right;
             font-size: 9px;
+            white-space: nowrap;
         }
 
         .outer { border: 1px solid #000; border-bottom: none; }
@@ -65,6 +79,9 @@
 
         .sig-row-table td { padding: 8px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
         .sig-row-line { border-bottom: 1px solid #999; height: 16px; }
+        .sig-row-line.with-assets { height: auto; min-height: 16px; padding-top: 2px; }
+        .sig-img { max-height: 32px; max-width: 90px; vertical-align: bottom; }
+        .stamp-img { max-height: 42px; max-width: 65px; vertical-align: bottom; margin-left: 6px; opacity: 0.92; }
 
         /* ── vehicle top rows ─────────────────────────────────── */
         .veh-two-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; width: 50%; font-size: 8.4px; }
@@ -109,6 +126,7 @@
 <body>
 
 {{-- ══════════════════════════ PAGE 1 ══════════════════════════ --}}
+<div class="page-pad">
 
 <table class="header-table outer">
     <tr>
@@ -239,7 +257,16 @@
                     <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
                 </tr>
                 <tr>
-                    <td>Signature de l'agent :<div class="sig-row-line"></div></td>
+                    <td>Signature de l'agent :
+                        <div class="sig-row-line {{ ($signatureDataUrl || $stampDataUrl) ? 'with-assets' : '' }}">
+                            @if($signatureDataUrl)
+                                <img src="{{ $signatureDataUrl }}" class="sig-img" alt="Signature">
+                            @endif
+                            @if($stampDataUrl)
+                                <img src="{{ $stampDataUrl }}" class="stamp-img" alt="Cachet">
+                            @endif
+                        </div>
+                    </td>
                     <td class="ar">{{ \App\Services\PdfService::ar('توقيع الوكيل :') }}</td>
                 </tr>
                 <tr>
@@ -380,8 +407,11 @@
 
 <div class="footer-note">Document généré le {{ now()->format('d/m/Y à H:i') }} — {{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
 
+</div>{{-- /.page-pad (page 1) --}}
+
 {{-- ══════════════════════════ PAGE 2 — CONDITIONS GENERALES ══════════════════════════ --}}
 <div class="page-break"></div>
+<div class="page-pad">
 
 <div class="cgl-title"><h1>CONDITIONS GENERALES DE LOCATION</h1></div>
 <div class="cgl-intro">
@@ -483,6 +513,8 @@
         </td>
     </tr>
 </table>
+
+</div>{{-- /.page-pad (page 2) --}}
 
 </body>
 </html>

@@ -103,7 +103,7 @@ class Reservation extends Model implements HasMedia, Auditable
     {
         $billableEndDate = $this->isEarlyReturn ? $this->actual_return_date : $this->return_date;
 
-        $this->total_days = max(1, (int) $this->pickup_date->diffInDays($billableEndDate));
+        $this->total_days = max(1, (int) ceil($this->pickup_date->diffInSeconds($billableEndDate) / 86400));
         $this->subtotal = $this->daily_rate * $this->total_days;
         $this->discount_amount = $this->subtotal * ($this->discount_percentage / 100);
         $this->total_amount = $this->subtotal - $this->discount_amount + $this->additional_fees;
@@ -130,8 +130,8 @@ class Reservation extends Model implements HasMedia, Auditable
         $isEarly = $actualReturnDate->lt($this->return_date);
         $billableEndDate = $isEarly ? $actualReturnDate : $this->return_date;
 
-        $actualDays = max(1, (int) $this->pickup_date->diffInDays($billableEndDate));
-        $contractedDays = max(1, (int) $this->pickup_date->diffInDays($this->return_date));
+        $actualDays = max(1, (int) ceil($this->pickup_date->diffInSeconds($billableEndDate) / 86400));
+        $contractedDays = max(1, (int) ceil($this->pickup_date->diffInSeconds($this->return_date) / 86400));
 
         $subtotal = $this->daily_rate * $actualDays;
         $discountAmount = $subtotal * ($this->discount_percentage / 100);
