@@ -37,7 +37,7 @@ Process frontend (PM2) : `itiban-frontend`
 
 ```bash
 cd /var/www/ges-cars-admin/backend
-php artisan down
+`php artisan down`
 ```
 
 ## 2. Sauvegarde de la base cible AVANT toute suppression
@@ -83,13 +83,13 @@ php artisan db:seed --class=RoleSeeder --force
 
 ## 7. Importer le nouveau dump de l'ancienne base dans LA MÊME base
 
+Le nom du fichier contient typiquement des espaces et parenthèses (ex.
+`cars (4).sql`), ce qui rend la syntaxe `-e "... SOURCE fichier;"` fragile.
+Utiliser `--init-command` (appliqué sur la connexion) + une redirection
+classique à la place :
 ```bash
-mysql -u root -p --default-character-set=utf8mb4 \
-  -e "SET SESSION sql_mode = ''; SOURCE /chemin/vers/cars (4).sql;" itiban_rent_car_db
-```
-Ou plus simplement (si pas de zéro-dates problématiques, sinon garder la commande ci-dessus) :
-```bash
-mysql -u root -p itiban_rent_car_db < "/chemin/vers/cars (4).sql"
+mysql -u root -p --default-character-set=utf8mb4 --init-command="SET SESSION sql_mode='';" \
+  itiban_rent_car_db < "/chemin/vers/cars (4).sql"
 ```
 
 ## 8. Exécuter le script de migration

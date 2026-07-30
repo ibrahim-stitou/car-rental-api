@@ -62,7 +62,7 @@ class ProfileController extends BaseController
     {
         $request->validate([
             'current_password' => 'required|string',
-            'password'         => 'required|string|min:8|confirmed',
+            'password'         => 'required|string|min:8|confirmed', 
         ]);
 
         $user = auth('api')->user();
