@@ -27,7 +27,7 @@ class User extends Authenticatable implements JWTSubject, HasMedia, Auditable, C
 
     protected $fillable = [
         'first_name', 'last_name', 'email',
-        'password', 'phone', 'is_active', 'last_login_at',
+        'password', 'phone', 'is_active', 'last_login_at', 'last_login_ip',
     ];
 
     protected $hidden = ['password', 'remember_token'];

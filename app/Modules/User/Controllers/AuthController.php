@@ -4,6 +4,7 @@ namespace App\Modules\User\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
 use App\Models\User;
+use App\Services\TelegramLoginAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -55,6 +56,14 @@ class AuthController extends BaseController
         }
 
         $user->update(['last_login_at' => now()]);
+
+        // Deferred to run after the HTTP response is sent: Telegram (and the
+        // best-effort IP geolocation lookup behind it) must never add latency
+        // to, or risk breaking, the login flow itself.
+        $ip = $request->ip();
+        dispatch(function () use ($user, $ip) {
+            app(TelegramLoginAlertService::class)->notifyIfNewLocation($user, $ip);
+        })->afterResponse();
 
         return $this->respondWithToken($token, $user);
     }
