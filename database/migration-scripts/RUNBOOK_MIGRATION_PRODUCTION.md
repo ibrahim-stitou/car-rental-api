@@ -60,6 +60,14 @@ git pull
 composer install --no-dev --optimize-autoloader   # seulement si des dépendances ont changé
 ```
 
+Ce `git pull` ramène aussi la fonctionnalité (indépendante de la migration)
+d'alerte Telegram à la connexion. Optionnel — sans configuration elle ne fait
+rien silencieusement. Pour l'activer, ajouter dans `.env` :
+```
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
+```
+
 ## 5. Rejouer le schéma de la nouvelle application
 
 ```bash
@@ -163,7 +171,7 @@ Si la connexion échoue encore avec une 502, revérifier l'étape 0 (buffers ngi
   année/catégorie/transmission/tarif journalier si connus.
 - Ouvrir quelques assurances/vignettes/visites techniques marquées
   "À COMPLÉTER (migration)" et compléter les champs texte si disponibles.
-- Ouvrir une réservation migrée (`reservation_number LIKE 'RES-LEGACY-%'`) et
+- Ouvrir une réservation migrée (`reservation_number LIKE 'ARCHIVE-%'`) et
   confirmer que les notes mentionnent bien l'ancien contrat.
 - Vérifier les totaux financiers d'une agence.
 

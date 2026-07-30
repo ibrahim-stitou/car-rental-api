@@ -60,7 +60,18 @@ class AuthController extends BaseController
         // Deferred to run after the HTTP response is sent: Telegram (and the
         // best-effort IP geolocation lookup behind it) must never add latency
         // to, or risk breaking, the login flow itself.
-        $ip = $request->ip();
+        //
+        // This endpoint is called server-side by the Next.js app (NextAuth's
+        // authorize()), not directly by the browser, so $request->ip() here
+        // would just be the app server's own IP. The frontend forwards the
+        // real browser IP (read from nginx's X-Forwarded-For on the original
+        // incoming request) via X-Client-Ip. This endpoint is public, so that
+        // header is spoofable by a direct caller — validated as a real IP
+        // format before use; worst case of trusting a bogus one is a
+        // misleading Telegram alert, not a security bypass, so a format
+        // check is enough here.
+        $forwardedIp = $request->header('X-Client-Ip');
+        $ip = ($forwardedIp && filter_var($forwardedIp, FILTER_VALIDATE_IP)) ? $forwardedIp : $request->ip();
         dispatch(function () use ($user, $ip) {
             app(TelegramLoginAlertService::class)->notifyIfNewLocation($user, $ip);
         })->afterResponse();
