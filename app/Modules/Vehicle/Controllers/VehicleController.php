@@ -218,7 +218,10 @@ class VehicleController extends BaseController
     {
         $vehicle = $this->service->find($id);
 
-        $rq = $vehicle->reservations();
+        // Migrated reservations are a pure historical archive (forced to
+        // completed/paid regardless of their real original status) and must
+        // not inflate this vehicle's revenue/count stats.
+        $rq = $vehicle->reservations()->whereNull('legacy_id');
 
         $totalRevenue = (float) (clone $rq)->where('reservations.status', 'completed')
             ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')

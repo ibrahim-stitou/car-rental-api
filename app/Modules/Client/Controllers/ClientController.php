@@ -249,7 +249,10 @@ class ClientController extends BaseController
     public function statistics(string $id): JsonResponse
     {
         $client = $this->service->find($id);
-        $rq = $client->reservations();
+        // Migrated reservations are a pure historical archive (forced to
+        // completed/paid regardless of their real original status) and must
+        // not inflate this client's revenue/credit/count stats.
+        $rq = $client->reservations()->whereNull('legacy_id');
 
         $totalAmount = (float) (clone $rq)->whereNotIn('status', ['cancelled'])->sum('total_amount');
         $totalPaid   = (float) $client->reservations()

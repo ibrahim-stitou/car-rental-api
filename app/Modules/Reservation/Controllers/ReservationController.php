@@ -515,6 +515,10 @@ class ReservationController extends BaseController
         $agencyId = $request->query('agency_id');
 
         $credits = \App\Models\Reservation::query()
+            // Migrated reservations are a pure historical archive (forced to
+            // completed/paid regardless of their real original status) and
+            // must not appear as outstanding client credit.
+            ->whereNull('legacy_id')
             ->whereIn('status', ['completed', 'active'])
             ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
             ->selectRaw('reservations.*, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')

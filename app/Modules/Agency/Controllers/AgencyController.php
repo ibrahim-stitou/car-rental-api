@@ -222,7 +222,10 @@ class AgencyController extends BaseController
         $agency = $this->service->find($id);
 
         $vq = $agency->vehicles();
-        $rq = $agency->reservations();
+     // Migrated reservations are a pure historical archive (forced to
+        // completed/paid regardless of their real original status) and must
+        // not inflate revenue/credit/count KPIs.
+        $rq = $agency->reservations()->whereNull('legacy_id');
 
         $totalRevenue = (float) (clone $rq)->whereIn('status', ['completed'])
             ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')
@@ -284,7 +287,7 @@ class AgencyController extends BaseController
     public function credits(string $id): JsonResponse
     {
         $agency = $this->service->find($id);
-        $creditRows = $this->creditReservationsQuery($agency->reservations());
+        $creditRows = $this->creditReservationsQuery($agency->reservations()->whereNull('legacy_id'));
 
         $reservations = Reservation::whereIn('id', $creditRows->pluck('id'))
             ->with(['client:id,first_name,last_name', 'vehicle:id,brand,model,registration_number'])

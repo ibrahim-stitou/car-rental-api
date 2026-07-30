@@ -95,13 +95,19 @@ Lire attentivement le rapport de vérification affiché en fin de script
 "MIGRATION:" à corriger, liste des enregistrements "À COMPLÉTER", et les
 compteurs de facturation (`fa_current`/`bc_current`/`bl_current`).
 
-**Important — numérotation** : les réservations migrées reprennent exactement
-la référence de l'ancien contrat (format `YY-XXXX`, ex. `26-0009`), ou son id
-brut si l'ancien contrat n'avait pas de référence (comme l'affichait l'ancien
-frontend). Les nouvelles réservations créées après cette migration continuent
-automatiquement la même séquence `YY-XXXX` (plus de collision possible, le
-format est différent de l'ancien `RES-YYYY-NNNNNN`). Les factures/BC/BL migrées
-gardent aussi leur référence d'origine, et les compteurs de génération
+**Important — réservations migrées = archive pure** : elles reçoivent une
+référence `ARCHIVE-<ancien_id>` (jamais générée par l'application, donc aucune
+collision possible), et sont forcées à `status=completed` / `payment_status=paid`
+quel que soit leur statut réel dans l'ancien système. Elles sont exclues des
+statistiques de revenus/crédit partout dans l'application (dashboard, stats
+agence/véhicule/client, listes de crédit) via un filtre `legacy_id IS NOT NULL`
+côté backend — elles restent visibles dans les listings normaux (historique
+client, etc.) mais ne faussent aucun chiffre financier. Les nouvelles
+réservations créées après la migration utilisent le format `YY-XXXX`
+(ex. `26-0001`), sans lien avec les références archivées.
+
+Les factures/BC/BL migrées gardent leur référence d'origine (`legal_documents.reference`,
+déjà unique dans l'ancien système), et les compteurs de génération
 (`fa_current`, `bc_current`, `bl_current`) sont alignés automatiquement par le
 script pour que les prochains documents continuent la numérotation.
 

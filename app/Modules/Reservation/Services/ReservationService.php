@@ -234,7 +234,10 @@ class ReservationService
 
     public function statistics(array $filters = []): array
     {
-        $query = Reservation::query();
+        // Migrated reservations are a pure historical archive (forced to
+        // completed/paid regardless of their real original status) and must
+        // not inflate live KPIs/revenue.
+        $query = Reservation::query()->whereNull('legacy_id');
         if (!empty($filters['agency_id'])) {
             $query->where('agency_id', $filters['agency_id']);
         }

@@ -63,7 +63,10 @@ class DashboardController extends BaseController
 
     private function reservationStats(?string $agencyId): array
     {
-        $q = Reservation::query()->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
+        // Migrated reservations are a pure historical archive (forced to
+        // completed/paid regardless of their real original status) and must
+        // not inflate live KPIs.
+        $q = Reservation::query()->whereNull('legacy_id')->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
 
         $counts = (clone $q)->selectRaw('status, COUNT(*) as cnt')->groupBy('status')->pluck('cnt', 'status');
 

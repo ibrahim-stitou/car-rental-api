@@ -72,9 +72,10 @@ class Reservation extends Model implements HasMedia, Auditable
     }
 
     // Methods
-    // Format "YY-XXXX" (ex: 26-0001), repris tel quel de l'ancien système pour
-    // assurer la continuité de la numérotation après la migration des données
-    // historiques (les réservations migrées portent déjà ce même format).
+    // Format "YY-XXXX" (ex: 26-0001), repris de l'ancien système. Les
+    // réservations migrées utilisent un format distinct ('ARCHIVE-<ancien_id>',
+    // voir migrate_legacy_data.sql) pour rester clairement identifiables comme
+    // de l'historique archivé — elles n'alimentent donc pas ce compteur.
     public function generateReservationNumber(): string
     {
         $year = now()->format('y');

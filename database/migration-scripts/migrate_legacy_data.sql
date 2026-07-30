@@ -42,6 +42,16 @@
 --    SEPAREE : ne l'exécutez qu'après avoir vérifié le résultat de la migration
 --    dans l'application elle-même.
 --
+-- 8. Les réservations migrées sont un pur ARCHIVE historique, pas des
+--    réservations "vivantes" : reference 'ARCHIVE-<ancien_id>' (jamais générée
+--    par l'application), statut forcé à 'completed'/'paid' quel que soit le
+--    statut d'origine, et exclues des statistiques de revenus/crédit partout
+--    dans l'application (filtre `legacy_id IS NOT NULL` côté backend :
+--    DashboardController, ReservationService::statistics, ReservationController
+--    ::credits, AgencyController::statistics/credits, VehicleController::
+--    statistics, ClientController::statistics). Elles restent visibles dans les
+--    listings normaux (historique client, recherche par ancien contrat, etc.).
+--
 -- =============================================================================
 
 SET @migration_started_at = NOW();
@@ -317,14 +327,16 @@ WHERE NOT EXISTS (SELECT 1 FROM vehicles x WHERE x.legacy_id = c.id);
 -- =============================================================================
 -- SECTION 8 — Réservations (contrat -> reservations)
 -- =============================================================================
--- reservation_number = référence de l'ancien contrat quand elle existe (format
--- 'YY-XXXX', ex. '26-0009' — l'ancien système ne l'attribuait qu'à partir de
--- 2026), sinon l'id numérique brut de l'ancien contrat (c'est exactement ce que
--- l'ancien frontend affichait par défaut en absence de référence : voir
--- reservation-list.component.ts, `displayId: item.reference ? item.reference : item.id`).
--- La génération des nouveaux numéros (app\Models\Reservation::generateReservationNumber)
--- reprend elle aussi le format 'YY-XXXX' et continue automatiquement la même
--- séquence à partir du max déjà présent en base après cette migration.
+-- Ces réservations sont migrées comme un pur ARCHIVE historique, pas comme des
+-- réservations "vivantes" : reservation_number = 'ARCHIVE-<ancien_id>' (format
+-- volontairement différent de toute référence réelle — ancienne 'YY-XXXX' ou
+-- nouvelle générée par l'application — pour qu'on les distingue au premier
+-- coup d'œil). status et payment_status sont forcés à 'completed'/'paid' pour
+-- TOUTES les réservations migrées, quel que soit leur statut d'origine (voir
+-- demande explicite : l'historique migré doit apparaître soldé). Ces lignes
+-- sont exclues des statistiques de revenus/crédit (voir Section 8c et le code
+-- applicatif — filtré par `legacy_id IS NOT NULL`), afin de ne pas fausser les
+-- chiffres réels avec de l'historique.
 -- `notes` mentionne explicitement l'ancien contrat, comme demandé.
 -- Chèque -> bank_transfer (le nouvel enum de paiement de réservation n'a pas de
 -- valeur "chèque" ; le plus proche disponible est utilisé).
@@ -341,7 +353,7 @@ INSERT INTO reservations (
 )
 SELECT
     UUID(),
-    COALESCE(NULLIF(TRIM(co.reference), ''), CAST(co.id AS CHAR)),
+    CONCAT('ARCHIVE-', co.id),
     na.id,
     nv.id,
     ncl.id,
@@ -358,8 +370,8 @@ SELECT
     0, 0, 0,
     co.price,
     CASE co.paiement WHEN 'Espece' THEN 'cash' WHEN 'Cheque' THEN 'bank_transfer' ELSE 'cash' END,
-    CASE co.statut WHEN 'Cloture' THEN 'paid' ELSE 'pending' END,
-    CASE co.statut WHEN 'Pending' THEN 'pending' WHEN 'Encore' THEN 'active' WHEN 'Cloture' THEN 'completed' ELSE 'pending' END,
+    'paid',
+    'completed',
     CONCAT(
         'Migré depuis l''ancien système (contrat #', co.id,
         IF(co.reference IS NOT NULL AND co.reference <> '', CONCAT(', référence ', co.reference), ''),
@@ -377,37 +389,13 @@ WHERE NOT EXISTS (SELECT 1 FROM reservations x WHERE x.legacy_id = co.id);
 
 
 -- =============================================================================
--- SECTION 8b — Correction statut : vieux contrats "en retard" (2025 et avant)
+-- SECTION 9 — Paiements synthétiques pour solder toutes les réservations migrées
 -- =============================================================================
--- L'ancien système n'avait pas de fonctionnalité pour clôturer une réservation
--- avant 2026 : son seul statut "en cours" était "Encore" (-> 'active' ci-dessus),
--- qu'un contrat ait réellement été rendu ou non. La nouvelle application, elle,
--- calcule automatiquement "en retard" pour toute réservation 'active' dont la
--- date de retour est dépassée (voir Reservation::scopeOverdue / isOverdue()).
--- Sans correction, tous ces vieux contrats de 2025 et avant remonteraient donc
--- à tort comme des retards actifs. On les reclasse en 'completed', faute de
--- pouvoir déterminer leur date de retour réelle.
---
--- NB : payment_status reste inchangé par cette correction (probablement
--- 'pending' pour ces lignes, voir section 9) — à vérifier manuellement si
--- besoin, la migration ne peut pas déduire si ces vieux contrats ont été
--- réellement payés.
-
-UPDATE reservations
-SET status = 'completed'
-WHERE legacy_id IS NOT NULL
-  AND status = 'active'
-  AND return_date < CURDATE()
-  AND YEAR(pickup_date) <= 2025;
-
-
--- =============================================================================
--- SECTION 9 — Paiements synthétiques pour les contrats historiquement clôturés
--- =============================================================================
--- L'ancien système ne suivait pas les paiements séparément (juste un montant
--- global sur le contrat). Pour les contrats "Cloture" (terminés), on considère
--- qu'ils ont été intégralement réglés et on crée un paiement correspondant, afin
--- que le solde affiché dans la nouvelle application reste cohérent.
+-- Puisque TOUTES les réservations migrées sont forcées à payment_status='paid'
+-- (Section 8), chacune reçoit ici un paiement synthétique intégral, afin que le
+-- solde affiché dans la nouvelle application reste cohérent avec ce statut.
+-- L'ancien système ne suivait de toute façon pas les paiements séparément
+-- (juste un montant global sur le contrat), donc le détail réel est perdu.
 
 INSERT INTO reservation_payments (id, reservation_id, amount, payment_method, payment_date, notes, created_at, updated_at)
 SELECT
@@ -416,11 +404,10 @@ SELECT
     nr.total_amount,
     nr.payment_method,
     DATE(COALESCE(NULLIF(nr.actual_return_date, '0000-00-00'), nr.return_date)),
-    'Paiement reconstitué automatiquement lors de la migration (contrat historique clôturé, montant non détaillé dans l''ancien système).',
+    'Paiement reconstitué automatiquement lors de la migration (contrat archivé, montant non détaillé dans l''ancien système).',
     NOW(), NOW()
 FROM reservations nr
-JOIN contrat co ON co.id = nr.legacy_id
-WHERE co.statut = 'Cloture'
+WHERE nr.legacy_id IS NOT NULL
   AND nr.total_amount > 0
   AND NOT EXISTS (SELECT 1 FROM reservation_payments p WHERE p.reservation_id = nr.id);
 
