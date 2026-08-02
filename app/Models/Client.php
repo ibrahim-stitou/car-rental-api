@@ -73,12 +73,13 @@ class Client extends Model implements HasMedia, Auditable
     // Media
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('id_document')->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'application/pdf']);
-        $this->addMediaCollection('driving_license')->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'application/pdf']);
-        $this->addMediaCollection('selfie')->singleFile()
-            ->acceptsMimeTypes(['image/jpeg', 'image/png']);
+        $mimes = ['image/jpeg', 'image/png', 'application/pdf'];
+
+        $this->addMediaCollection('id_document_recto')->singleFile()->acceptsMimeTypes($mimes);
+        $this->addMediaCollection('id_document_verso')->singleFile()->acceptsMimeTypes($mimes);
+        $this->addMediaCollection('driving_license_recto')->singleFile()->acceptsMimeTypes($mimes);
+        $this->addMediaCollection('driving_license_verso')->singleFile()->acceptsMimeTypes($mimes);
+        $this->addMediaCollection('selfie')->singleFile()->acceptsMimeTypes(['image/jpeg', 'image/png']);
         $this->addMediaCollection('other_documents');
     }
 }

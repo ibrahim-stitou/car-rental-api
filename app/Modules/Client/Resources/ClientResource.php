@@ -38,12 +38,22 @@ class ClientResource extends JsonResource
             'blacklist_reason'         => $this->blacklist_reason,
             'reservations_count'       => $this->whenCounted('reservations'),
             'notes'                    => $this->notes,
-            'id_document'              => $this->getFirstMediaUrl('id_document') ?: null,
-            'id_document_media_id'     => $this->getFirstMedia('id_document')?->id,
-            'driving_license_doc'      => $this->getFirstMediaUrl('driving_license') ?: null,
-            'driving_license_media_id' => $this->getFirstMedia('driving_license')?->id,
+
+            // Pièce d'identité — recto / verso
+            'id_document_recto'              => $this->getFirstMediaUrl('id_document_recto') ?: null,
+            'id_document_recto_media_id'     => $this->getFirstMedia('id_document_recto')?->id,
+            'id_document_verso'              => $this->getFirstMediaUrl('id_document_verso') ?: null,
+            'id_document_verso_media_id'     => $this->getFirstMedia('id_document_verso')?->id,
+
+            // Permis de conduire — recto / verso
+            'driving_license_recto'          => $this->getFirstMediaUrl('driving_license_recto') ?: null,
+            'driving_license_recto_media_id' => $this->getFirstMedia('driving_license_recto')?->id,
+            'driving_license_verso'          => $this->getFirstMediaUrl('driving_license_verso') ?: null,
+            'driving_license_verso_media_id' => $this->getFirstMedia('driving_license_verso')?->id,
+
             'selfie'                   => $this->getFirstMediaUrl('selfie') ?: null,
             'selfie_media_id'          => $this->getFirstMedia('selfie')?->id,
+
             'creator'                  => $this->whenLoaded('creator', fn() => [
                 'id' => $this->creator->id, 'full_name' => $this->creator->full_name,
             ]),
@@ -52,4 +62,3 @@ class ClientResource extends JsonResource
         ];
     }
 }
-

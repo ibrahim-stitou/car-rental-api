@@ -152,10 +152,19 @@ class ClientController extends BaseController
      */
     public function uploadIdDocument(Request $request, string $id): JsonResponse
     {
-        $request->validate(['id_document' => 'required|file|mimes:jpeg,png,pdf|max:5120']);
+        $request->validate([
+            'id_document' => 'required|file|mimes:jpeg,png,pdf|max:5120',
+            'side'        => 'required|in:recto,verso',
+        ]);
         $client = $this->service->find($id);
-        $client->uploadMedia($request->file('id_document'), 'id_document');
-        return $this->success(['url' => $client->getFirstMediaUrl('id_document')], 'ID document uploaded');
+        $collection = "id_document_{$request->side}";
+        $client->uploadMedia($request->file('id_document'), $collection);
+
+        return $this->success([
+            'side'     => $request->side,
+            'url'      => $client->getFirstMediaUrl($collection),
+            'media_id' => $client->getFirstMedia($collection)?->id,
+        ], 'ID document uploaded');
     }
 
     /**
@@ -169,10 +178,19 @@ class ClientController extends BaseController
      */
     public function uploadDrivingLicense(Request $request, string $id): JsonResponse
     {
-        $request->validate(['driving_license' => 'required|file|mimes:jpeg,png,pdf|max:5120']);
+        $request->validate([
+            'driving_license' => 'required|file|mimes:jpeg,png,pdf|max:5120',
+            'side'             => 'required|in:recto,verso',
+        ]);
         $client = $this->service->find($id);
-        $client->uploadMedia($request->file('driving_license'), 'driving_license');
-        return $this->success(['url' => $client->getFirstMediaUrl('driving_license')], 'Driving license uploaded');
+        $collection = "driving_license_{$request->side}";
+        $client->uploadMedia($request->file('driving_license'), $collection);
+
+        return $this->success([
+            'side'     => $request->side,
+            'url'      => $client->getFirstMediaUrl($collection),
+            'media_id' => $client->getFirstMedia($collection)?->id,
+        ], 'Driving license uploaded');
     }
 
     /**
