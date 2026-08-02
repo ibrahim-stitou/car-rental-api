@@ -33,11 +33,27 @@ class ReservationController extends BaseController
      *   @OA\Response(response=200, description="Success")
      * )
      */
+
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['agency_id', 'vehicle_id', 'client_id', 'status', 'payment_status', 'overdue', 'search', 'date_from', 'date_to']);
+        $rawFilters = $request->only([
+            'agency_id', 'vehicle_id', 'client_id', 'status',
+            'payment_status', 'overdue', 'search', 'date_from',
+            'date_to', 'legacy_id'
+        ]);
+
+        $filters = $this->prepareFilters($rawFilters);
+
         $data = $this->service->list($filters, $request->integer('per_page', 15));
+
         return $this->paginated($data, ReservationResource::class);
+    }
+
+    private function prepareFilters(array $filters): array
+    {
+        return array_filter($filters, function ($value) {
+            return $value !== null && $value !== '';
+        });
     }
 
     /**

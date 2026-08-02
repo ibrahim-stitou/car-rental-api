@@ -21,6 +21,26 @@
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         td, th { vertical-align: top; }
 
+        {{-- Full-page-height trick: DomPDF/CSS2.1 has no flex/grid, so the
+             only reliable way to make a page's content always reach the true
+             bottom of the sheet — instead of trailing off with dead white
+             space — is the classic "fixed-height table + unconstrained
+             spacer row" technique: give the wrapping table an explicit
+             height equal to the printable area, and let a row with no
+             content height absorb whatever space is left over. A4
+             (210×297mm) at DomPDF's default 96dpi ≈ 793×1122px; minus the
+             18px top/bottom @page margin, the printable height is
+             ≈1086px. 1070px is used as a small safety margin.
+
+             IMPORTANT: this trick only stretches a *box* (border/background)
+             to fill the page — it must never be combined with enlarging the
+             actual text inside it, since real content can silently overflow
+             past one physical page (which is what caused a spurious 3rd
+             page previously). Only the frame/border stretches; the CGL body
+             copy below keeps its original, page-tested sizes. --}}
+        .page-frame { width: 100%; height: 1070px; }
+        .page-frame td { padding: 0; }
+
         {{-- Arabic text is pre-shaped into visual glyph order server-side (see
              PdfService::ar()) since dompdf has no reliable bidi/RTL engine of
              its own — it just draws whatever order it's given, left to right.
@@ -44,12 +64,26 @@
         .outer:last-of-type { border-bottom: 1px solid #000; }
 
         /* ── header ───────────────────────────────────────────── */
-        .header-table td { padding: 12px 16px; }
-        .header-left { width: 66%; border-right: 1px solid #000; }
-        .header-logo-img { max-height: 46px; max-width: 140px; display: block; margin-bottom: 4px; }
-        .header-logo-text { font-size: 19px; font-weight: bold; color: #1a3a8f; letter-spacing: 0.5px; }
-        .header-agency-lines { font-size: 8px; color: #222; line-height: 1.7; margin-top: 3px; }
-        .header-right { width: 34%; text-align: center; font-size: 11px; font-style: italic; padding: 22px 12px 12px; }
+        .header-table td { padding: 12px 18px; }
+        /* divider border between the two header sections removed per request */
+        .header-left { width: 66%; }
+        /* FIX: logo enlarged further (was max-height:92px / max-width:280px) */
+        .header-logo-img { max-height: 120px; max-width: 350px; display: block; margin-bottom: 6px; }
+        /* FIX: header text sizes increased further */
+        .header-logo-text { font-size: 29px; font-weight: bold; color: #1a3a8f; letter-spacing: 0.5px; }
+        .header-agency-lines { font-size: 10px; color: #222; line-height: 1.7; margin-top: 4px; }
+        /* "Location de voiture sans chauffeur" pinned to the bottom of the
+           header row, bigger text per request */
+        .header-right {
+            width: 34%;
+            text-align: center;
+            font-size: 17px;
+            font-style: italic;
+            font-weight: 600;
+            color: #1a3a8f;
+            padding: 12px 14px 16px;
+            vertical-align: bottom;
+        }
 
         /* ── ref bar ──────────────────────────────────────────── */
         .refbar-table td { padding: 8px 16px; font-size: 9.5px; }
@@ -67,7 +101,8 @@
         .frow-value { width: 34%; font-weight: bold; }
         .frow-ar { width: 26%; }
 
-        .subhead { background: #eef1f6; font-weight: bold; padding: 6px 12px; border-bottom: 1px solid #000; border-top: 1px solid #000; font-size: 8.6px; }
+        /* Subtle brand-color accent on section subheads for a more modern feel */
+        .subhead { background: #eef1f6; font-weight: bold; padding: 6px 12px; border-bottom: 1px solid #000; border-top: 1px solid #000; border-left: 3px solid #1a3a8f; font-size: 8.6px; }
         .subhead-ar { float: right; }
 
         .empty-block { padding: 10px 8px; text-align: center; }
@@ -121,12 +156,21 @@
 
         /* ── page 2 ───────────────────────────────────────────── */
         .page-break { page-break-before: always; }
+        {{-- FIX: the whole CGL page is enclosed in a bordered, rounded frame
+             that always spans the full page height (via .page-frame above),
+             so the page never trails off with dead space below the text —
+             but the frame's own padding/border must stay tight and the body
+             copy below MUST NOT be enlarged from its original, page-tested
+             sizes, or the ten articles overflow onto a spurious extra page
+             (this happened previously: enlarging text pushed the content
+             past one A4 page → 3 total pages instead of 2). --}}
+        .cgl-frame { border: 1px solid #000; border-radius: 4px; padding: 12px 16px; }
         .cgl-title { text-align: center; margin: 10px 0 18px; }
-        .cgl-title h1 { font-size: 14px; font-weight: bold; border: 1.5px solid #000; border-radius: 20px; display: inline-block; padding: 8px 28px; letter-spacing: 0.5px; }
-        .cgl-intro { font-size: 8.6px; margin-bottom: 18px; line-height: 1.6; }
+        .cgl-title h1 { font-size: 14px; font-weight: bold; border: 1.5px solid #1a3a8f; color: #1a3a8f; border-radius: 20px; display: inline-block; padding: 8px 28px; letter-spacing: 0.5px; }
+        .cgl-intro { font-size: 8.6px; margin-bottom: 18px; line-height: 1.6; padding-bottom: 10px; border-bottom: 2px solid #1a3a8f; }
         .cgl-columns td { width: 50%; vertical-align: top; padding: 0 14px; }
         .cgl-article { margin-bottom: 12px; }
-        .cgl-article h4 { font-size: 8.8px; font-weight: bold; margin-bottom: 4px; }
+        .cgl-article h4 { font-size: 8.8px; font-weight: bold; color: #1a3a8f; margin-bottom: 4px; }
         .cgl-article p { font-size: 7.8px; line-height: 1.55; text-align: justify; }
     </style>
 </head>
@@ -134,389 +178,399 @@
 
 {{-- ══════════════════════════ PAGE 1 ══════════════════════════ --}}
 <div class="page-pad">
+    <table class="page-frame">
+        <tr><td>
 
-<table class="header-table outer">
-    <tr>
-        <td class="header-left">
-            @if($logoDataUrl)
-                <img src="{{ $logoDataUrl }}" class="header-logo-img" alt="Logo">
-            @else
-                <div class="header-logo-text">{{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
-            @endif
-            <div class="header-agency-lines">
-                @if($reservation->agency?->address ?? $company['address'] ?? null)
-                    {{ $reservation->agency->address ?? $company['address'] }}<br>
-                @endif
-                @if($reservation->agency?->phone ?? $company['phone'] ?? null)
-                    Tél/Fax: {{ $reservation->agency->phone ?? $company['phone'] }}<br>
-                @endif
-                @if($reservation->agency?->phone2 ?? $company['phone2'] ?? null)
-                    GSM: {{ $reservation->agency->phone2 ?? $company['phone2'] }}<br>
-                @endif
-                @if($reservation->agency?->email ?? $company['email'] ?? null)
-                    E.mail: {{ $reservation->agency->email ?? $company['email'] }}
-                @endif
-            </div>
-        </td>
-        <td class="header-right">
-            Location de voiture<br>sans chauffeur
-        </td>
-    </tr>
-</table>
-
-<table class="refbar-table outer">
-    <tr>
-        <td class="refbar-left"><b>LOCATAIRE -N°:</b> <span class="refbar-num">{{ $reservation->reservation_number }}</span></td>
-        <td><b>VEHICULE</b></td>
-    </tr>
-</table>
-
-@php
-    $client = $reservation->client;
-    $vehicle = $reservation->vehicle;
-    $second = $reservation->secondDriver;
-    $hasSecond = $second || $reservation->second_driver_name;
-    $pickup = $reservation->pickup_date;
-    $returnPlanned = $reservation->return_date;
-    $returnActual = $reservation->actual_return_date;
-    $payMethod = $reservation->payment_method;
-@endphp
-
-<table class="split-table outer">
-    <tr>
-        {{-- ═══ LEFT: LOCATAIRE ═══ --}}
-        <td class="split-left">
-
-            <table class="frow-table">
-                <tr>
-                    <td class="frow-label">Nom :</td>
-                    <td class="frow-value">{{ $client?->last_name ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الاسم العائلي :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Prénom :</td>
-                    <td class="frow-value">{{ $client?->first_name ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الاسم الشخصي :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Adresse :</td>
-                    <td class="frow-value">{{ $client?->address ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('العنوان :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Tél :</td>
-                    <td class="frow-value">{{ $client?->phone ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الهاتف :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Permis de Conduire N° :</td>
-                    <td class="frow-value">{{ $client?->driving_license_number ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رخصة رقم :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Délivré le :</td>
-                    <td class="frow-value">{{ $client?->license_issue_date?->format('d/m/Y') ?? '—' }} @if($client?->license_issue_place) à {{ $client->license_issue_place }} @endif</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('منح في :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Date et Lieu de Naissance :</td>
-                    <td class="frow-value">{{ $client?->date_of_birth?->format('d/m/Y') ?? '—' }} @if($client?->birth_place) à {{ $client->birth_place }} @endif</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('تاريخ ومكان الازدياد :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">N° Passeport/CIN :</td>
-                    <td class="frow-value">{{ $client?->id_number ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رقم جواز السفر / بطاقة التعريف :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Autre Conducteur Agréé :</td>
-                    <td class="frow-value">{{ $second ? trim($second->last_name . ' ' . $second->first_name) : ($reservation->second_driver_name ?? '—') }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('السائق المعتمد الثاني :') }}</td>
-                </tr>
-                @if($second)
-                <tr>
-                    <td class="frow-label">Date et Lieu de Naissance :</td>
-                    <td class="frow-value">{{ $second->date_of_birth?->format('d/m/Y') ?? '—' }} @if($second->birth_place) à {{ $second->birth_place }} @endif</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('تاريخ ومكان الازدياد :') }}</td>
-                </tr>
-                @endif
-                <tr>
-                    <td class="frow-label">Permis de Conduire N° :</td>
-                    <td class="frow-value">{{ $second?->driving_license_number ?? $reservation->second_driver_license ?? '—' }}</td>
-                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رخصة رقم :') }}</td>
-                </tr>
-                <tr>
-                    <td class="frow-label">Observations et Réserve :</td>
-                    <td class="frow-value" colspan="2" style="font-weight:normal;">{{ $reservation->notes ?? '—' }}</td>
-                </tr>
-            </table>
-
-            <div class="legal-block">
-                Le Client est seul responsable des délits et contraventions des circulations.<br>
-                <span class="ar">{{ \App\Services\PdfService::ar('الزبون هو المسؤول الوحيد عن أي حادثة أو غرامة مالية عن أي مخالفة مرتكبة.') }}</span><br>
-                J'ai lu et accepte les conditions stipulées ci-contre et au verso<br>
-                <span class="ar">{{ \App\Services\PdfService::ar('اطلعت و وافقت على جميع الشروط المذكورة أعلاه وخلف العقد') }}</span>
-            </div>
-
-            <table class="sig-row-table">
-                <tr>
-                    <td style="width:60%;">Signature de client :<div class="sig-row-line tall"></div></td>
-                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
-                </tr>
-                <tr class="{{ ($signatureDataUrl || $stampDataUrl) ? 'no-border' : '' }}">
-                    <td>Signature de l'agent :
-                        <div class="sig-row-line {{ ($signatureDataUrl || $stampDataUrl) ? 'with-assets' : '' }}">
-                            @if($signatureDataUrl)
-                                <img src="{{ $signatureDataUrl }}" class="sig-img" alt="Signature">
-                            @endif
-                            @if($stampDataUrl)
-                                <img src="{{ $stampDataUrl }}" class="stamp-img" alt="Cachet">
-                            @endif
-                        </div>
-                    </td>
-                    <td class="ar">{{ \App\Services\PdfService::ar('توقيع الوكيل :') }}</td>
-                </tr>
-                <tr>
-                    <td>Livrée par :<div class="sig-row-line"></div></td>
-                    <td class="ar">{{ \App\Services\PdfService::ar('سلمت من طرف :') }}</td>
-                </tr>
-            </table>
-
-        </td>
-
-        {{-- ═══ RIGHT: VEHICULE ═══ --}}
-        <td class="split-right">
-
-            <table class="veh-two-table">
-                <tr>
-                    <td>Marque : <b>{{ $vehicle?->brand ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('علامة') }}</span></td>
-                    <td>Type : <b>{{ $vehicle?->model ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('صنف') }}</span></td>
-                </tr>
-                <tr>
-                    <td>Matricule : <b>{{ $vehicle?->registration_number ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('رقم اللوحة') }}</span></td>
-                    <td>Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('وقود') }}</span></td>
-                </tr>
-            </table>
-
-            <table class="dr-table">
-                <tr>
-                    <th style="width:20%;"></th>
-                    <th>Départ <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الانطلاق') }}</span></th>
-                    <th>Retour <span class="dr-ar ar">{{ \App\Services\PdfService::ar('العودة') }}</span></th>
-                </tr>
-                <tr>
-                    <td class="lbl">Date <span class="dr-ar ar">{{ \App\Services\PdfService::ar('التاريخ') }}</span></td>
-                    <td>{{ $pickup?->format('d/m/Y') ?? '—' }}</td>
-                    <td>{{ ($returnActual ?? $returnPlanned)?->format('d/m/Y') ?? '—' }}</td>
-                </tr>
-                <tr>
-                    <td class="lbl">Heure <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الساعة') }}</span></td>
-                    <td>{{ $pickup?->format('H:i') ?? '—' }}</td>
-                    <td>{{ ($returnActual ?? $returnPlanned)?->format('H:i') ?? '—' }}</td>
-                </tr>
-                <tr>
-                    <td class="lbl">Km <span class="dr-ar ar">{{ \App\Services\PdfService::ar('كيلومتر') }}</span></td>
-                    <td>{{ $reservation->initial_mileage !== null ? number_format($reservation->initial_mileage) : '—' }}</td>
-                    <td>{{ $reservation->final_mileage !== null ? number_format($reservation->final_mileage) : '—' }}</td>
-                </tr>
-                <tr>
-                    <td class="lbl">Lieu <span class="dr-ar ar">{{ \App\Services\PdfService::ar('المكان') }}</span></td>
-                    <td>{{ $reservation->pickup_location ?? '—' }}</td>
-                    <td>{{ $reservation->actual_return_location ?? $reservation->return_location ?? $reservation->pickup_location ?? '—' }}</td>
-                </tr>
-            </table>
-
-            <div class="subhead">Facturation (Livraison) <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('فاتورة (التسليم)') }}</span></div>
-            <table class="fact-table">
-                <tr>
-                    <td class="fl">Journée(s) :</td>
-                    <td class="fv">{{ $reservation->total_days ?? '—' }} x {{ number_format($reservation->daily_rate ?? 0, 2) }}</td>
-                    <td class="fa ar">{{ \App\Services\PdfService::ar('الأيام :') }}</td>
-                </tr>
-                <tr>
-                    <td class="fl">Divers :</td>
-                    <td class="fv">{{ ($reservation->additional_fees ?? 0) > 0 ? number_format($reservation->additional_fees, 2) : 'x' }}</td>
-                    <td class="fa ar">{{ \App\Services\PdfService::ar('مختلفة :') }}</td>
-                </tr>
-                <tr>
-                    <td class="fl">Total H.T. :</td>
-                    <td class="fv"><b>{{ number_format($reservation->subtotal ?? 0, 2) }}</b></td>
-                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع بدون الضريبة :') }}</td>
-                </tr>
-                <tr>
-                    <td class="fl">T.V.A % :</td>
-                    <td class="fv">{{ $company['tva_rate'] ?? '—' }}</td>
-                    <td class="fa ar">{{ \App\Services\PdfService::ar('الضريبة :') }}</td>
-                </tr>
-                <tr>
-                    <td class="fl">Total T.T.C. :</td>
-                    <td class="fv"><b>{{ number_format($reservation->total_amount ?? 0, 2) }}</b></td>
-                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع مع الضريبة :') }}</td>
-                </tr>
-            </table>
-
-            <div class="subhead">État du Véhicule <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('حالة السيارة') }}</span></div>
-            <div class="etat-wrap">
-                <span class="chk"></span> Griffe &nbsp;
-                <span class="chk"></span> Rayure &nbsp;
-                <span class="chk"></span> Accident &nbsp;
-                <span class="chk"></span> Choc
-                <table class="car-diagram-table">
+                <table class="header-table outer">
                     <tr>
-                        <td style="width:70%;"><div class="car-box"></div></td>
-                        <td style="width:30%;">
-                            <div class="fuel-gauge">E&nbsp;&nbsp;&nbsp;F</div>
+                        <td class="header-left">
+                            @if($logoDataUrl)
+                                <img src="{{ $logoDataUrl }}" class="header-logo-img" alt="Logo">
+                            @else
+                                <div class="header-logo-text">{{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
+                            @endif
+                            <div class="header-agency-lines">
+                                @if($reservation->agency?->address ?? $company['address'] ?? null)
+                                    {{ $reservation->agency->address ?? $company['address'] }}<br>
+                                @endif
+                                @if($reservation->agency?->phone ?? $company['phone'] ?? null)
+                                    Tél/Fax: {{ $reservation->agency->phone ?? $company['phone'] }}<br>
+                                @endif
+                                @if($reservation->agency?->phone2 ?? $company['phone2'] ?? null)
+                                    GSM: {{ $reservation->agency->phone2 ?? $company['phone2'] }}<br>
+                                @endif
+                                @if($reservation->agency?->email ?? $company['email'] ?? null)
+                                    E.mail: {{ $reservation->agency->email ?? $company['email'] }}
+                                @endif
+                            </div>
+                        </td>
+                        <td class="header-right">
+                            Location de voiture<br>sans chauffeur
                         </td>
                     </tr>
                 </table>
-            </div>
 
-            <table class="sig-row-table">
-                <tr>
-                    <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
-                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
-                </tr>
-            </table>
+                <table class="refbar-table outer">
+                    <tr>
+                        <td class="refbar-left"><b>LOCATAIRE -N°:</b> <span class="refbar-num">{{ $reservation->reservation_number }}</span></td>
+                        <td><b>VEHICULE</b></td>
+                    </tr>
+                </table>
 
-            <div class="subhead">Mode de Règlement <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('طريقة الأداء') }}</span></div>
-            <table class="modereg-table">
-                <tr>
-                    <td style="width:50%;">
-                        <span class="chk {{ $payMethod === 'check' ? 'on' : '' }}"></span> Chèque
-                    </td>
-                    <td class="ar" style="width:50%;">{{ \App\Services\PdfService::ar('نقدا') }} <span class="chk {{ $payMethod === 'cash' ? 'on' : '' }}"></span> Espèce</td>
-                </tr>
-                <tr>
-                    <td colspan="2">Référence : — <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('المرجع :') }}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="2">Date : {{ now()->format('d/m/Y') }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('التاريخ :') }}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="2">Retour Présence à bord : {{ $returnActual?->format('d/m/Y') ?? '—' }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('الرجوع النهائي :') }}</span></td>
-                </tr>
-            </table>
+                @php
+                    $client = $reservation->client;
+                    $vehicle = $reservation->vehicle;
+                    $second = $reservation->secondDriver;
+                    $hasSecond = $second || $reservation->second_driver_name;
+                    $pickup = $reservation->pickup_date;
+                    $returnPlanned = $reservation->return_date;
+                    $returnActual = $reservation->actual_return_date;
+                    $payMethod = $reservation->payment_method;
+                @endphp
 
-            <table class="sig-row-table">
-                <tr>
-                    <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
-                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
-                </tr>
-            </table>
+                <table class="split-table outer">
+                    <tr>
+                        {{-- ═══ LEFT: LOCATAIRE ═══ --}}
+                        <td class="split-left">
 
-        </td>
-    </tr>
-</table>
+                            <table class="frow-table">
+                                <tr>
+                                    <td class="frow-label">Nom :</td>
+                                    <td class="frow-value">{{ $client?->last_name ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الاسم العائلي :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Prénom :</td>
+                                    <td class="frow-value">{{ $client?->first_name ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الاسم الشخصي :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Adresse :</td>
+                                    <td class="frow-value">{{ $client?->address ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('العنوان :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Tél :</td>
+                                    <td class="frow-value">{{ $client?->phone ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('الهاتف :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Permis de Conduire N° :</td>
+                                    <td class="frow-value">{{ $client?->driving_license_number ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رخصة رقم :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Délivré le :</td>
+                                    <td class="frow-value">{{ $client?->license_issue_date?->format('d/m/Y') ?? '—' }} @if($client?->license_issue_place) à {{ $client->license_issue_place }} @endif</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('منح في :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Date et Lieu de Naissance :</td>
+                                    <td class="frow-value">{{ $client?->date_of_birth?->format('d/m/Y') ?? '—' }} @if($client?->birth_place) à {{ $client->birth_place }} @endif</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('تاريخ ومكان الازدياد :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">N° Passeport/CIN :</td>
+                                    <td class="frow-value">{{ $client?->id_number ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رقم جواز السفر / بطاقة التعريف :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Autre Conducteur Agréé :</td>
+                                    <td class="frow-value">{{ $second ? trim($second->last_name . ' ' . $second->first_name) : ($reservation->second_driver_name ?? '—') }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('السائق المعتمد الثاني :') }}</td>
+                                </tr>
+                                @if($second)
+                                    <tr>
+                                        <td class="frow-label">Date et Lieu de Naissance :</td>
+                                        <td class="frow-value">{{ $second->date_of_birth?->format('d/m/Y') ?? '—' }} @if($second->birth_place) à {{ $second->birth_place }} @endif</td>
+                                        <td class="frow-ar ar">{{ \App\Services\PdfService::ar('تاريخ ومكان الازدياد :') }}</td>
+                                    </tr>
+                                @endif
+                                <tr>
+                                    <td class="frow-label">Permis de Conduire N° :</td>
+                                    <td class="frow-value">{{ $second?->driving_license_number ?? $reservation->second_driver_license ?? '—' }}</td>
+                                    <td class="frow-ar ar">{{ \App\Services\PdfService::ar('رخصة رقم :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="frow-label">Observations et Réserve :</td>
+                                    <td class="frow-value" colspan="2" style="font-weight:normal;">{{ $reservation->notes ?? '—' }}</td>
+                                </tr>
+                            </table>
 
-<div class="footer-note">Document généré le {{ now()->format('d/m/Y à H:i') }} — {{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
+                            <div class="legal-block">
+                                Le Client est seul responsable des délits et contraventions des circulations.<br>
+                                <span class="ar">{{ \App\Services\PdfService::ar('الزبون هو المسؤول الوحيد عن أي حادثة أو غرامة مالية عن أي مخالفة مرتكبة.') }}</span><br>
+                                J'ai lu et accepte les conditions stipulées ci-contre et au verso<br>
+                                <span class="ar">{{ \App\Services\PdfService::ar('اطلعت و وافقت على جميع الشروط المذكورة أعلاه وخلف العقد') }}</span>
+                            </div>
 
+                            <table class="sig-row-table">
+                                <tr>
+                                    <td style="width:60%;">Signature de client :<div class="sig-row-line tall"></div></td>
+                                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
+                                </tr>
+                                <tr class="{{ ($signatureDataUrl || $stampDataUrl) ? 'no-border' : '' }}">
+                                    <td>Signature de l'agent :
+                                        <div class="sig-row-line {{ ($signatureDataUrl || $stampDataUrl) ? 'with-assets' : '' }}">
+                                            @if($signatureDataUrl)
+                                                <img src="{{ $signatureDataUrl }}" class="sig-img" alt="Signature">
+                                            @endif
+                                            @if($stampDataUrl)
+                                                <img src="{{ $stampDataUrl }}" class="stamp-img" alt="Cachet">
+                                            @endif
+                                        </div>
+                                    </td>
+                                    <td class="ar">{{ \App\Services\PdfService::ar('توقيع الوكيل :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Livrée par :<div class="sig-row-line"></div></td>
+                                    <td class="ar">{{ \App\Services\PdfService::ar('سلمت من طرف :') }}</td>
+                                </tr>
+                            </table>
+
+                        </td>
+
+                        {{-- ═══ RIGHT: VEHICULE ═══ --}}
+                        <td class="split-right">
+
+                            <table class="veh-two-table">
+                                <tr>
+                                    <td>Marque : <b>{{ $vehicle?->brand ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('علامة') }}</span></td>
+                                    <td>Type : <b>{{ $vehicle?->model ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('صنف') }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Matricule : <b>{{ $vehicle?->registration_number ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('رقم اللوحة') }}</span></td>
+                                    <td>Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('وقود') }}</span></td>
+                                </tr>
+                            </table>
+
+                            <table class="dr-table">
+                                <tr>
+                                    <th style="width:20%;"></th>
+                                    <th>Départ <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الانطلاق') }}</span></th>
+                                    <th>Retour <span class="dr-ar ar">{{ \App\Services\PdfService::ar('العودة') }}</span></th>
+                                </tr>
+                                <tr>
+                                    <td class="lbl">Date <span class="dr-ar ar">{{ \App\Services\PdfService::ar('التاريخ') }}</span></td>
+                                    <td>{{ $pickup?->format('d/m/Y') ?? '—' }}</td>
+                                    <td>{{ ($returnActual ?? $returnPlanned)?->format('d/m/Y') ?? '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="lbl">Heure <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الساعة') }}</span></td>
+                                    <td>{{ $pickup?->format('H:i') ?? '—' }}</td>
+                                    <td>{{ ($returnActual ?? $returnPlanned)?->format('H:i') ?? '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="lbl">Km <span class="dr-ar ar">{{ \App\Services\PdfService::ar('كيلومتر') }}</span></td>
+                                    <td>{{ $reservation->initial_mileage !== null ? number_format($reservation->initial_mileage) : '—' }}</td>
+                                    <td>{{ $reservation->final_mileage !== null ? number_format($reservation->final_mileage) : '—' }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="lbl">Lieu <span class="dr-ar ar">{{ \App\Services\PdfService::ar('المكان') }}</span></td>
+                                    <td>{{ $reservation->pickup_location ?? '—' }}</td>
+                                    <td>{{ $reservation->actual_return_location ?? $reservation->return_location ?? $reservation->pickup_location ?? '—' }}</td>
+                                </tr>
+                            </table>
+
+                            <div class="subhead">Facturation (Livraison) <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('فاتورة (التسليم)') }}</span></div>
+                            <table class="fact-table">
+                                <tr>
+                                    <td class="fl">Journée(s) :</td>
+                                    <td class="fv">{{ $reservation->total_days ?? '—' }} x {{ number_format($reservation->daily_rate ?? 0, 2) }}</td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('الأيام :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fl">Divers :</td>
+                                    <td class="fv">{{ ($reservation->additional_fees ?? 0) > 0 ? number_format($reservation->additional_fees, 2) : 'x' }}</td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('مختلفة :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fl">Total H.T. :</td>
+                                    <td class="fv"><b>{{ number_format($reservation->subtotal ?? 0, 2) }}</b></td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع بدون الضريبة :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fl">T.V.A % :</td>
+                                    <td class="fv">{{ $company['tva_rate'] ?? '—' }}</td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('الضريبة :') }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fl">Total T.T.C. :</td>
+                                    <td class="fv"><b>{{ number_format($reservation->total_amount ?? 0, 2) }}</b></td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع مع الضريبة :') }}</td>
+                                </tr>
+                            </table>
+
+                            <div class="subhead">État du Véhicule <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('حالة السيارة') }}</span></div>
+                            <div class="etat-wrap">
+                                <span class="chk"></span> Griffe &nbsp;
+                                <span class="chk"></span> Rayure &nbsp;
+                                <span class="chk"></span> Accident &nbsp;
+                                <span class="chk"></span> Choc
+                                <table class="car-diagram-table">
+                                    <tr>
+                                        <td style="width:70%;"><div class="car-box"></div></td>
+                                        <td style="width:30%;">
+                                            <div class="fuel-gauge">E&nbsp;&nbsp;&nbsp;F</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <table class="sig-row-table">
+                                <tr>
+                                    <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
+                                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
+                                </tr>
+                            </table>
+
+                            <div class="subhead">Mode de Règlement <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('طريقة الأداء') }}</span></div>
+                            <table class="modereg-table">
+                                <tr>
+                                    <td style="width:50%;">
+                                        <span class="chk {{ $payMethod === 'check' ? 'on' : '' }}"></span> Chèque
+                                    </td>
+                                    <td class="ar" style="width:50%;">{{ \App\Services\PdfService::ar('نقدا') }} <span class="chk {{ $payMethod === 'cash' ? 'on' : '' }}"></span> Espèce</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">Référence : — <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('المرجع :') }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">Date : {{ now()->format('d/m/Y') }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('التاريخ :') }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">Retour Présence à bord : {{ $returnActual?->format('d/m/Y') ?? '—' }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('الرجوع النهائي :') }}</span></td>
+                                </tr>
+                            </table>
+
+                            <table class="sig-row-table">
+                                <tr>
+                                    <td style="width:60%;">Signature du Client :<div class="sig-row-line"></div></td>
+                                    <td class="ar" style="width:40%;">{{ \App\Services\PdfService::ar('توقيع الزبون :') }}</td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+                </table>
+
+            </td></tr>
+        <tr><td>&nbsp;</td></tr>
+        <tr><td>
+                <div class="footer-note">Document généré le {{ now()->format('d/m/Y à H:i') }} — {{ $reservation->agency->name ?? $company['name'] ?? config('app.name') }}</div>
+            </td></tr>
+    </table>
 </div>{{-- /.page-pad (page 1) --}}
 
 {{-- ══════════════════════════ PAGE 2 — CONDITIONS GENERALES ══════════════════════════ --}}
 <div class="page-break"></div>
 <div class="page-pad">
+    <table class="page-frame">
+        <tr><td class="cgl-frame">
 
-<div class="cgl-title"><h1>CONDITIONS GENERALES DE LOCATION</h1></div>
-<div class="cgl-intro">
-    Le present contrat a été etabli et prend date comme indiqué au verso. il engage qui sera appelé le loueur et la personne Société
-    ou Compagnie par qui est signé ce contrat, qui sera dénommée " le locataire"
-</div>
+                <div class="cgl-title"><h1>CONDITIONS GENERALES DE LOCATION</h1></div>
+                <div class="cgl-intro">
+                    Le present contrat a été etabli et prend date comme indiqué au verso. il engage qui sera appelé le loueur et la personne Société
+                    ou Compagnie par qui est signé ce contrat, qui sera dénommée " le locataire"
+                </div>
 
-<table class="cgl-columns">
-    <tr>
-        <td>
-            <div class="cgl-article">
-                <h4>Art. 1- UTILISATION DE LA VOITURE-</h4>
-                <p>Le locataire s'engage à ne pas laisser conduire la voiture par d'autres personnes que lui même ou celles agréées
-                par le loueur et dont il se porte garant, et à réutiliser le véhicule que pour ses besoins personnels. il est interdit
-                de participer à toute compétition, quelle que soit, et d'utiliser le véhicule des fins illicites ou des transports de
-                marchandises. Le locataire s'engage à ne pas solliciter directement des documents douaniers- Il est interdit au
-                locataire de surcharger le véhicule loué en transportant un nombre de passagers supérieur à celui porté sur le
-                contrat, sous peie d'être déchu de l'Assurances.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 2- ETAT DE LA VOITURE-</h4>
-                <p>La voiture est livrée en parfait état de marche et de propreté. Les compteurs et leurs prises sont plombés, et les
-                plombs ne pourront être enlevés ou volés sous peine de devoir payer la location sur la base de 500 Kilomètres par
-                jour. La voiture sera rendue dans le même état de propreté; a défaut le locataire devra acquitter le montant de ces
-                nettoyage et remises en état les 5 pneus sont en bon état sans coupures, l'usure et normale. en cas de détérioration
-                et de l'un d'eux pour une cause autre que l'usure normale. Le locataire s'engage à le remplacer immédiatement par un
-                pneu neuf de mêmes dimensions ou d'en payer le montant.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 3- ESSENCE ET HUILE-</h4>
-                <p>L'essence est à la charge du client. Le locataire doit vérifier en permanence les niveaux d'huile et d'eau, et
-                vérifier les niveaux de la boîte de vitesse et du pont arrière tous les 1.000 Kilomètre. Il justifiera de ces
-                travaux par les factures correspondantes (qui lui seront remboursées) sous peine d'avoir à payer une indemnité
-                pour usure anormale.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 4- ENTRETIEN ET REPARATION-</h4>
-                <p>L'usure mécanique normale est à la charge du loueur. Toutes les réparations provenant, soit d'une usure
-                anormale, soit d'une négligence de la part du locataire ou d'une cause accindentelle, seront à la charge et
-                exécutées par ses soins. Dans le cas ou le véhicule serait immobilisé en dehors de la région, les réparations
-                qu'elles soient dues a l'usure normale ou à une cause accidentelle, ne seront exécutées qu'après accord
-                télégraphique du loueur ou par l'Agent régional de la marque de véhicule. Elles devront faire l'objet d'une
-                facture acquittée et très détaillée. Les pièces défectueuses remplacées devront être présentées avec la facture
-                acquittée, En aucun cas et n'a aucune circonstance, le locataire ne pourra réclamer des dommages et intérêts,
-                soit pour le retard de la remise de la voiture, ou annulation de la location, soit pour immobilisation dans le
-                cas de réparations nécessitées par l'usure normale et effectuées au cours de la location. la responsabilité du
-                loueur ne pourra jamais être invoquée, même en cas d'accidents de personnes ou de choses ayant pu résulter de
-                vices ou de défauts de construction ou de réparations antérieures.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 5- ASSURANCE-</h4>
-                <p>Le locataire est garanti pour les risques suivants : En cas d'accidents fortuit ou fotif le Locataire est
-                entièrement responsable des dommages causés au véhicule en conséquence. il est tenu de nous régler le montant
-                total des réparations Le locataire est le seul conducteur du véhicule et s'engage à ne pas céder à autrui à
-                moins d'une stipulation sur le présent contrat, Les frais de rapatriement et d'immobilisation reste toujours à
-                la charge du locataire, quelle que soit la formule d'assurance contractes. ASSU-RANCE-Assure tières illimitée
-                vol et incendie est inclus dans le prix de location assure complémentaire de 35 Dh par jour en cas d'accident
-                fau-tif 30% et fortuite 50% reste à la charge du client. Assure des personnes transportés peut être souscrite
-                pour 15 Dh par jour. La voiture n'est assurée que pour la durée de location. Passé ce délai, le locataire décline
-                toute résponsabilité pour les accidents que le locataire aurait pu causer et dont il devra faire son affaire
-                personnelle. Enfin; il n'y a pas d'Assurance pour tout conducteur non muni d'un per-mis en état de validité ou
-                d'une permis datant de moins de l'an. le loueur décline toutes responsabilité pour les accidents aux tiers ou
-                dégat à la voiture que Je locataire pourrait causer pendant la période de laocation si le locataire a
-                délibérement fourni au loueur des informations fausses concernant son identité, son adresse ou la validité de
-                son permis de conduire.</p>
-            </div>
-        </td>
-        <td>
-            <div class="cgl-article">
-                <h4>Art. 6- LOCATION, CAUTION, PROLONGATION-</h4>
-                <p>Les prix de la location, ainsi que la caution, sont payables d'avance. La caution ne pourra servir, en aucun
-                cas au loueur, faire parvenir le montant, de la location en cours, sous peine à une prolongation de locataire.
-                A fin d'éviter toutes contestation et pour le cas ou le locateur voudrait conserver la voiture pour un temps
-                supérieur à celui indiqué dans le contrat, il devra après avoir obtenu l'accord de s'exposer à des poursuites
-                pour détournement de voiture ou abus de confiance. La journée de location compte de 0 heures à 24 heures et
-                toute journées commencées est due en entier.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 7- RAPATRIEMENT DE LA VOITURE-</h4>
-                <p>Le locataire s'interdit formellement d'abandonner le véhicule. En cas d'impossibilité matérielle. celle-ci
-                sera rapatriée aux frais et par les soins du locataire, la location restant due jusqu'à retour du véhicule.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 8 - PAPIER DE LA VOITURE-</h4>
-                <p>Le locataire remettra dès la fin de la location à la rentrée de la voiture la carte grise et tous les papiers
-                nécessaires à sa circulation, faute de quoi, ces pièces étant indispensables à de nouvelles locations, la
-                location continuera a être facturée aux prix initial jusqu'à leur remise à la société. En cas de perte de ces
-                papiers le locataire devra acquitter les montant des frais de duplicata. ainsi que l'immobilisation.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 9- RESPONSABILITE-</h4>
-                <p>Le locataire demeure le seule responsable des amendes, contraventions et procés-verbaux établis contre lui.</p>
-            </div>
-            <div class="cgl-article">
-                <h4>Art. 10- COMPETENCE-</h4>
-                <p>De convention expresse et en cas de contestation quelconque, le tribunal de Tanger sera seul compétant, les
-                frais de timbres et d'enregistrement restant à la charge du locataire</p>
-            </div>
-        </td>
-    </tr>
-</table>
+                <table class="cgl-columns">
+                    <tr>
+                        <td>
+                            <div class="cgl-article">
+                                <h4>Art. 1- UTILISATION DE LA VOITURE-</h4>
+                                <p>Le locataire s'engage à ne pas laisser conduire la voiture par d'autres personnes que lui même ou celles agréées
+                                    par le loueur et dont il se porte garant, et à réutiliser le véhicule que pour ses besoins personnels. il est interdit
+                                    de participer à toute compétition, quelle que soit, et d'utiliser le véhicule des fins illicites ou des transports de
+                                    marchandises. Le locataire s'engage à ne pas solliciter directement des documents douaniers- Il est interdit au
+                                    locataire de surcharger le véhicule loué en transportant un nombre de passagers supérieur à celui porté sur le
+                                    contrat, sous peie d'être déchu de l'Assurances.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 2- ETAT DE LA VOITURE-</h4>
+                                <p>La voiture est livrée en parfait état de marche et de propreté. Les compteurs et leurs prises sont plombés, et les
+                                    plombs ne pourront être enlevés ou volés sous peine de devoir payer la location sur la base de 500 Kilomètres par
+                                    jour. La voiture sera rendue dans le même état de propreté; a défaut le locataire devra acquitter le montant de ces
+                                    nettoyage et remises en état les 5 pneus sont en bon état sans coupures, l'usure et normale. en cas de détérioration
+                                    et de l'un d'eux pour une cause autre que l'usure normale. Le locataire s'engage à le remplacer immédiatement par un
+                                    pneu neuf de mêmes dimensions ou d'en payer le montant.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 3- ESSENCE ET HUILE-</h4>
+                                <p>L'essence est à la charge du client. Le locataire doit vérifier en permanence les niveaux d'huile et d'eau, et
+                                    vérifier les niveaux de la boîte de vitesse et du pont arrière tous les 1.000 Kilomètre. Il justifiera de ces
+                                    travaux par les factures correspondantes (qui lui seront remboursées) sous peine d'avoir à payer une indemnité
+                                    pour usure anormale.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 4- ENTRETIEN ET REPARATION-</h4>
+                                <p>L'usure mécanique normale est à la charge du loueur. Toutes les réparations provenant, soit d'une usure
+                                    anormale, soit d'une négligence de la part du locataire ou d'une cause accindentelle, seront à la charge et
+                                    exécutées par ses soins. Dans le cas ou le véhicule serait immobilisé en dehors de la région, les réparations
+                                    qu'elles soient dues a l'usure normale ou à une cause accidentelle, ne seront exécutées qu'après accord
+                                    télégraphique du loueur ou par l'Agent régional de la marque de véhicule. Elles devront faire l'objet d'une
+                                    facture acquittée et très détaillée. Les pièces défectueuses remplacées devront être présentées avec la facture
+                                    acquittée, En aucun cas et n'a aucune circonstance, le locataire ne pourra réclamer des dommages et intérêts,
+                                    soit pour le retard de la remise de la voiture, ou annulation de la location, soit pour immobilisation dans le
+                                    cas de réparations nécessitées par l'usure normale et effectuées au cours de la location. la responsabilité du
+                                    loueur ne pourra jamais être invoquée, même en cas d'accidents de personnes ou de choses ayant pu résulter de
+                                    vices ou de défauts de construction ou de réparations antérieures.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 5- ASSURANCE-</h4>
+                                <p>Le locataire est garanti pour les risques suivants : En cas d'accidents fortuit ou fotif le Locataire est
+                                    entièrement responsable des dommages causés au véhicule en conséquence. il est tenu de nous régler le montant
+                                    total des réparations Le locataire est le seul conducteur du véhicule et s'engage à ne pas céder à autrui à
+                                    moins d'une stipulation sur le présent contrat, Les frais de rapatriement et d'immobilisation reste toujours à
+                                    la charge du locataire, quelle que soit la formule d'assurance contractes. ASSU-RANCE-Assure tières illimitée
+                                    vol et incendie est inclus dans le prix de location assure complémentaire de 35 Dh par jour en cas d'accident
+                                    fau-tif 30% et fortuite 50% reste à la charge du client. Assure des personnes transportés peut être souscrite
+                                    pour 15 Dh par jour. La voiture n'est assurée que pour la durée de location. Passé ce délai, le locataire décline
+                                    toute résponsabilité pour les accidents que le locataire aurait pu causer et dont il devra faire son affaire
+                                    personnelle. Enfin; il n'y a pas d'Assurance pour tout conducteur non muni d'un per-mis en état de validité ou
+                                    d'une permis datant de moins de l'an. le loueur décline toutes responsabilité pour les accidents aux tiers ou
+                                    dégat à la voiture que Je locataire pourrait causer pendant la période de laocation si le locataire a
+                                    délibérement fourni au loueur des informations fausses concernant son identité, son adresse ou la validité de
+                                    son permis de conduire.</p>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="cgl-article">
+                                <h4>Art. 6- LOCATION, CAUTION, PROLONGATION-</h4>
+                                <p>Les prix de la location, ainsi que la caution, sont payables d'avance. La caution ne pourra servir, en aucun
+                                    cas au loueur, faire parvenir le montant, de la location en cours, sous peine à une prolongation de locataire.
+                                    A fin d'éviter toutes contestation et pour le cas ou le locateur voudrait conserver la voiture pour un temps
+                                    supérieur à celui indiqué dans le contrat, il devra après avoir obtenu l'accord de s'exposer à des poursuites
+                                    pour détournement de voiture ou abus de confiance. La journée de location compte de 0 heures à 24 heures et
+                                    toute journées commencées est due en entier.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 7- RAPATRIEMENT DE LA VOITURE-</h4>
+                                <p>Le locataire s'interdit formellement d'abandonner le véhicule. En cas d'impossibilité matérielle. celle-ci
+                                    sera rapatriée aux frais et par les soins du locataire, la location restant due jusqu'à retour du véhicule.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 8 - PAPIER DE LA VOITURE-</h4>
+                                <p>Le locataire remettra dès la fin de la location à la rentrée de la voiture la carte grise et tous les papiers
+                                    nécessaires à sa circulation, faute de quoi, ces pièces étant indispensables à de nouvelles locations, la
+                                    location continuera a être facturée aux prix initial jusqu'à leur remise à la société. En cas de perte de ces
+                                    papiers le locataire devra acquitter les montant des frais de duplicata. ainsi que l'immobilisation.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 9- RESPONSABILITE-</h4>
+                                <p>Le locataire demeure le seule responsable des amendes, contraventions et procés-verbaux établis contre lui.</p>
+                            </div>
+                            <div class="cgl-article">
+                                <h4>Art. 10- COMPETENCE-</h4>
+                                <p>De convention expresse et en cas de contestation quelconque, le tribunal de Tanger sera seul compétant, les
+                                    frais de timbres et d'enregistrement restant à la charge du locataire</p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
 
+            </td></tr>
+    </table>
 </div>{{-- /.page-pad (page 2) --}}
 
 </body>

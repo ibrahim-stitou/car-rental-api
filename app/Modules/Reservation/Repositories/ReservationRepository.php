@@ -20,25 +20,50 @@ class ReservationRepository extends BaseRepository
 
     protected function applyFilters(Builder $query, array $filters): Builder
     {
-        if (!empty($filters['overdue'])) {
-            unset($filters['overdue']);
-            $query->overdue();
-        }
-
+        // 1. Recherche globale sur la réservation, le véhicule et le client
         if (!empty($filters['search'])) {
             $term = $filters['search'];
             unset($filters['search']);
+
             $query->where(function (Builder $q) use ($term) {
+                // Champs propres à la réservation
                 foreach ($this->getSearchFields() as $field) {
                     $q->orWhere($field, 'LIKE', "%{$term}%");
                 }
+
+                // Recherche dans le véhicule lié (Immatriculation, Marque, Modèle, VIN)
+                $q->orWhereHas('vehicle', function (Builder $vq) use ($term) {
+                    $vq->where('registration_number', 'LIKE', "%{$term}%");
+                });
+
+                // Recherche dans le client lié (Nom, Prénom, Téléphone, CIN)
+                $q->orWhereHas('client', function (Builder $cq) use ($term) {
+                    $cq->where('first_name', 'LIKE', "%{$term}%")
+                        ->orWhere('last_name', 'LIKE', "%{$term}%")
+                        ->orWhere('id_number', 'LIKE', "%{$term}%");
+                });
             });
         }
 
-        // Période : réservations dont le séjour [pickup_date, return_date]
-        // chevauche l'intervalle demandé (mêmes bornes que le calendrier,
-        // voir ReservationService::calendar()), pas seulement celles qui
-        // démarrent dedans.
+        // 2. Gestion spécifique du filtre Overdue
+        if (array_key_exists('overdue', $filters)) {
+            $isOverdue = filter_var($filters['overdue'], FILTER_VALIDATE_BOOLEAN);
+            unset($filters['overdue']);
+            if ($isOverdue) {
+                $query->overdue();
+            }
+        }
+
+        // 3. Gestion spécifique du filtre Legacy ID
+        if (array_key_exists('legacy_id', $filters)) {
+            $isLegacy = filter_var($filters['legacy_id'], FILTER_VALIDATE_BOOLEAN);
+            unset($filters['legacy_id']);
+            if ($isLegacy) {
+                $query->whereNotNull('legacy_id');
+            }
+        }
+
+        // 4. Chevauchement de période (pickup_date <= date_to ET return_date >= date_from)
         if (!empty($filters['date_from'])) {
             $dateFrom = $filters['date_from'];
             unset($filters['date_from']);
@@ -51,7 +76,7 @@ class ReservationRepository extends BaseRepository
             $query->whereDate('pickup_date', '<=', $dateTo);
         }
 
+        // 5. Délègue le reste (agency_id, vehicle_id, client_id, status, payment_status, etc.) au BaseRepository
         return parent::applyFilters($query, $filters);
     }
 }
-

@@ -117,18 +117,59 @@ abstract class BaseRepository
     protected function applyFilters(Builder $query, array $filters): Builder
     {
         foreach ($filters as $field => $value) {
+            // 1. Ignorer les valeurs nulles, vides ou indéfinies
             if ($value === null || $value === '') {
                 continue;
             }
-            // Query-string values arrive as strings, so a boolean filter like
-            // "is_active=true" would otherwise be compared as the string "true"
-            // against a tinyint column and get coerced to 0 by MySQL — silently
-            // inverting the filter. Normalize the common boolean spellings first.
-            if (is_string($value) && in_array(strtolower($value), ['true', 'false'], true)) {
-                $value = strtolower($value) === 'true';
+
+            // 2. Normalisation des valeurs booléennes issues de query string ("true"/"false")
+            $isTrueString = is_string($value) && strtolower($value) === 'true';
+            $isFalseString = is_string($value) && strtolower($value) === 'false';
+            $isBool = is_bool($value) || $isTrueString || $isFalseString;
+            $boolVal = is_bool($value) ? $value : $isTrueString;
+
+            // 3. Gestion spécifique du champ 'search' (Recherche générique LIKE)
+            if ($field === 'search') {
+                $query->where(function (Builder $q) use ($value) {
+                    // Adaptez ou surchargez les colonnes selon le modèle si besoin
+                    $columns = property_exists($this, 'searchableColumns') ? $this->searchableColumns : ['code', 'note'];
+                    foreach ($columns as $index => $column) {
+                        if ($index === 0) {
+                            $q->where($column, 'LIKE', "%{$value}%");
+                        } else {
+                            $q->orWhere($column, 'LIKE', "%{$value}%");
+                        }
+                    }
+                });
+                continue;
             }
+
+            // 4. Gestion des filtres de dates de création
+            if ($field === 'date_from') {
+                $query->whereDate('created_at', '>=', $value);
+                continue;
+            }
+            if ($field === 'date_to') {
+                $query->whereDate('created_at', '<=', $value);
+                continue;
+            }
+
+            // 5. Gestion des vérifications de présence/nullité pour les IDs d'anciennes bases (ex: legacy_id)
+            if (str_ends_with($field, '_id') && $isBool) {
+                $boolVal ? $query->whereNotNull($field) : $query->whereNull($field);
+                continue;
+            }
+
+            // 6. Application des filtres booléens classiques
+            if ($isBool) {
+                $query->where($field, $boolVal);
+                continue;
+            }
+
+            // 7. Filtre standard par égalité (IDs, statuts, enum, etc.)
             $query->where($field, $value);
         }
+
         return $query;
     }
 }

@@ -71,9 +71,32 @@ class ReservationService
         return $reservation;
     }
 
+    /**
+     * FIX: previously this just delegated to $this->repository->update($id,
+     * $data), which persists the raw fields sent by the client (dates,
+     * daily_rate, discount_percentage, additional_fees, ...) but never
+     * recalculates total_days/subtotal/discount_amount/total_amount, and
+     * never resyncs payment_status. Any edit that touches billing-related
+     * fields therefore left stale totals in the database — the edit form
+     * only *looked* recalculated because that math was being redone
+     * client-side, while the stored record (and every other screen reading
+     * from it) kept showing the old numbers.
+     *
+     * Now mirrors create()/complete(): fill the changes onto the model,
+     * recompute the derived billing fields from whatever pickup_date/
+     * return_date/daily_rate/discount_percentage/additional_fees end up
+     * on the model, persist, and resync payment_status against the
+     * (possibly changed) total_amount.
+     */
     public function update(string $id, array $data): Reservation
     {
-        return $this->repository->update($id, $data);
+        $reservation = $this->repository->findByIdOrFail($id);
+        $reservation->fill($data);
+        $reservation->calculateTotal();
+        $reservation->save();
+        $reservation->syncPaymentStatus();
+
+        return $reservation->fresh();
     }
 
     public function delete(string $id): bool
@@ -225,7 +248,7 @@ class ReservationService
         if (!empty($filters['start_date']) && !empty($filters['end_date'])) {
             $query->where(function ($q) use ($filters) {
                 $q->whereBetween('pickup_date', [$filters['start_date'], $filters['end_date']])
-                  ->orWhereBetween('return_date', [$filters['start_date'], $filters['end_date']]);
+                    ->orWhereBetween('return_date', [$filters['start_date'], $filters['end_date']]);
             });
         }
 
@@ -254,4 +277,3 @@ class ReservationService
         ];
     }
 }
-
