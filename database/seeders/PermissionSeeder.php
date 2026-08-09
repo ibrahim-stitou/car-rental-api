@@ -60,6 +60,8 @@ class   PermissionSeeder extends Seeder
                 'activate-reservation' => 'Activer une réservation',
                 'complete-reservation' => 'Terminer une réservation',
                 'cancel-reservation'   => 'Annuler une réservation',
+                'manage-contract'      => 'Dévalider / régénérer le contrat',
+                'manage-payment'       => 'Ajouter / supprimer un paiement (hors acompte initial)',
             ],
             'Maintenance' => [
                 'view-maintenance'   => 'Voir les maintenances',

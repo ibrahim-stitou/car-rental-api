@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:api')->prefix('reservations')->group(function () {
     Route::get('/{id}/contract/pdf',     [ReservationController::class, 'contractPdf'])->middleware('permission:view-reservation');
     Route::get('/{id}/contract/pdf/save',[ReservationController::class, 'saveContractPdf'])->middleware('permission:view-reservation');
+    Route::patch('/{id}/contract/invalidate', [ReservationController::class, 'invalidateContract'])->middleware('permission:manage-contract');
+    Route::patch('/{id}/contract/regenerate', [ReservationController::class, 'regenerateContract'])->middleware('permission:manage-contract');
+    Route::get('/{id}/contract/history',      [ReservationController::class, 'contractHistory'])->middleware('permission:view-reservation');
     Route::get('/',                        [ReservationController::class, 'index'])->middleware('permission:view-reservation');
     Route::post('/',                       [ReservationController::class, 'store'])->middleware('permission:create-reservation');
     Route::get('/calendar',                [ReservationController::class, 'calendar'])->middleware('permission:view-reservation');

@@ -36,10 +36,10 @@ class Client extends Model implements HasMedia, Auditable
     protected function casts(): array
     {
         return [
-            'date_of_birth'          => 'date',
-            'id_expiry_date'         => 'date',
-            'driving_license_expiry' => 'date',
-            'license_issue_date'     => 'date',
+            'date_of_birth'          => 'date:Y-m-d',
+            'id_expiry_date'         => 'date:Y-m-d',
+            'driving_license_expiry' => 'date:Y-m-d',
+            'license_issue_date'     => 'date:Y-m-d',
             'is_blacklisted'         => 'boolean',
         ];
     }

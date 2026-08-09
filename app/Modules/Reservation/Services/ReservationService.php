@@ -3,14 +3,28 @@
 namespace App\Modules\Reservation\Services;
 
 use App\Models\Reservation;
+use App\Models\ReservationPayment;
 use App\Models\Vehicle;
 use App\Modules\Notification\Services\NotificationService;
 use App\Modules\Reservation\Repositories\ReservationRepository;
 use App\Services\PdfService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class ReservationService
 {
+    /**
+     * Fields printed on the contract PDF (see resources/views/pdf/contract.blade.php).
+     * A change to any of these on a reservation whose contract is currently
+     * `valid` means the printed document no longer matches reality, so it
+     * must be flagged `invalidated` until regenerated. Notes/mileage/fuel are
+     * intentionally excluded — not billing-relevant / set at activate|complete time.
+     */
+    private const CONTRACT_RELEVANT_FIELDS = [
+        'pickup_date', 'return_date', 'pickup_location', 'return_location',
+        'daily_rate', 'discount_percentage', 'additional_fees', 'total_amount',
+    ];
+
     public function __construct(
         protected ReservationRepository $repository,
         protected NotificationService $notificationService,
@@ -48,6 +62,10 @@ class ReservationService
 
     public function create(array $data): Reservation
     {
+        $initialPaidAmount   = $data['initial_paid_amount'] ?? null;
+        $initialPaymentMethod = $data['initial_payment_method'] ?? 'cash';
+        unset($data['initial_paid_amount'], $data['initial_payment_method']);
+
         $data['created_by'] = auth('api')->id();
         $data['status'] = $data['status'] ?? 'pending';
 
@@ -64,7 +82,26 @@ class ReservationService
             'total_amount'    => $reservation->total_amount,
         ]);
 
-        $reservation = $this->repository->create($data);
+        $reservation = DB::transaction(function () use ($data, $initialPaidAmount, $initialPaymentMethod) {
+            $reservation = $this->repository->create($data);
+
+            // Bundled into reservation creation (gated only by create-reservation)
+            // so it stays exempt from the manage-payment permission required for
+            // any payment recorded afterwards via the dedicated payments endpoint.
+            if ($initialPaidAmount !== null && $initialPaidAmount > 0) {
+                ReservationPayment::create([
+                    'reservation_id' => $reservation->id,
+                    'recorded_by'    => auth('api')->id(),
+                    'amount'         => min((float) $initialPaidAmount, (float) $reservation->total_amount),
+                    'payment_method' => $initialPaymentMethod,
+                    'payment_date'   => now()->toDateString(),
+                    'notes'          => 'Acompte initial',
+                ]);
+                $reservation->syncPaymentStatus();
+            }
+
+            return $reservation;
+        });
 
         $this->notificationService->notifyReservationCreated($reservation);
 
@@ -96,6 +133,10 @@ class ReservationService
         $reservation->save();
         $reservation->syncPaymentStatus();
 
+        if ($reservation->contract_status === 'valid' && $reservation->wasChanged(self::CONTRACT_RELEVANT_FIELDS)) {
+            $this->invalidateContract($reservation, 'Modification de la réservation');
+        }
+
         return $reservation->fresh();
     }
 
@@ -121,45 +162,105 @@ class ReservationService
     }
 
     /**
-     * Generate the contract PDF exactly once and lock it. Once
-     * contract_generated_at is set, subsequent calls are a no-op — the
-     * stored file remains the source of truth even if the reservation
-     * is edited afterwards.
+     * Generate the contract PDF and mark it valid. Once contract_status is
+     * no longer 'not_generated', subsequent calls are a no-op unless $force
+     * is passed (used by revalidateContract() to regenerate after an
+     * invalidation) — the stored file remains the source of truth until an
+     * explicit regeneration is requested.
      */
-    public function generateAndLockContract(Reservation $reservation): Reservation
+    public function generateAndLockContract(Reservation $reservation, bool $force = false): Reservation
     {
-        if ($reservation->contract_generated_at) {
+        if ($reservation->contract_status !== 'not_generated' && !$force) {
             return $reservation;
         }
 
+        $isFirstGeneration = $reservation->contract_status === 'not_generated';
+
         app(PdfService::class)->saveReservationContractToMedia($reservation);
-        $reservation->update(['contract_generated_at' => now()]);
+        $reservation->update([
+            'contract_generated_at' => $reservation->contract_generated_at ?? now(),
+            'contract_status'       => 'valid',
+        ]);
+
+        $this->logContractEvent($reservation, $isFirstGeneration ? 'generated' : 'regenerated');
 
         return $reservation->fresh();
     }
 
     /**
-     * After a reservation's dates change (extension), a previously-locked
-     * contract no longer reflects reality. Archive it into the
-     * 'contract_history' collection (so it stays auditable) and unlock +
-     * immediately regenerate a fresh contract against the current data.
-     * No-op if no contract had been generated yet — the next generation
-     * will simply use the already-updated dates.
+     * Marks an already-valid contract as invalidated (no longer trustworthy
+     * for printing) without touching the reservation's own workflow status
+     * (pending/confirmed/active) or vehicle availability — it's a purely
+     * document-level flag. No-op if the contract isn't currently valid
+     * (e.g. never generated yet), so callers can invoke this unconditionally
+     * after any reservation mutation.
      */
-    public function regenerateContractAfterExtension(Reservation $reservation): Reservation
+    public function invalidateContract(Reservation $reservation, string $reason): Reservation
     {
-        if (!$reservation->contract_generated_at) {
+        if ($reservation->contract_status !== 'valid') {
             return $reservation;
         }
+
+        $reservation->update(['contract_status' => 'invalidated']);
+        $this->logContractEvent($reservation, 'invalidated', $reason);
+
+        return $reservation->fresh();
+    }
+
+    /**
+     * Archives the current contract file (if any) to the 'contract_history'
+     * collection and generates a fresh one from the reservation's current
+     * data, marking it valid again. Used both for manual re-validation and
+     * for the automatic extension/completion flows.
+     */
+    public function revalidateContract(string $id): Reservation
+    {
+        $reservation = $this->repository->findByIdOrFail($id);
 
         $current = $reservation->getFirstMedia('contract');
         if ($current) {
             $current->move($reservation, 'contract_history');
         }
 
-        $reservation->update(['contract_generated_at' => null]);
+        return $this->generateAndLockContract($reservation, force: true);
+    }
 
-        return $this->generateAndLockContract($reservation->fresh());
+    /**
+     * After a reservation's dates change (extension), a previously-valid
+     * contract no longer reflects reality. Invalidate then immediately
+     * regenerate against the current data, so the flow stays coherent with
+     * the manual invalidate/revalidate primitives instead of a bespoke path.
+     * No-op if no contract had been generated yet — the next generation
+     * will simply use the already-updated dates.
+     */
+    public function regenerateContractAfterExtension(Reservation $reservation): Reservation
+    {
+        if ($reservation->contract_status === 'not_generated') {
+            return $reservation;
+        }
+
+        $this->invalidateContract($reservation, 'Prolongation de la réservation');
+
+        return $this->revalidateContract($reservation->id);
+    }
+
+    private function logContractEvent(Reservation $reservation, string $eventType, ?string $reason = null): void
+    {
+        $reservation->contractEvents()->create([
+            'actor_id'   => auth('api')->id(),
+            'event_type' => $eventType,
+            'reason'     => $reason,
+            'snapshot'   => [
+                'pickup_date'          => optional($reservation->pickup_date)->toIso8601String(),
+                'return_date'          => optional($reservation->return_date)->toIso8601String(),
+                'pickup_location'      => $reservation->pickup_location,
+                'return_location'      => $reservation->return_location,
+                'daily_rate'           => $reservation->daily_rate,
+                'discount_percentage'  => $reservation->discount_percentage,
+                'additional_fees'      => $reservation->additional_fees,
+                'total_amount'         => $reservation->total_amount,
+            ],
+        ]);
     }
 
     public function activate(string $id, array $data): Reservation
@@ -194,10 +295,22 @@ class ReservationService
             $reservation->calculateTotal();
         }
 
+        $wasEarlyOrLate = $reservation->actual_return_date && $reservation->return_date
+            && !$reservation->actual_return_date->equalTo($reservation->return_date);
+
         $reservation->save();
         $reservation->syncPaymentStatus();
         $reservation->vehicle->update(['status' => 'available']);
         $reservation = $reservation->fresh();
+
+        // The printed contract still shows the originally planned return
+        // date/total — if the actual closure data differs (early/late return,
+        // manual final-amount override), regenerate it now so the document
+        // handed to the client matches reality without a separate manual step.
+        if ($reservation->contract_status === 'valid' && ($wasEarlyOrLate || $finalAmountOverride !== null)) {
+            $this->invalidateContract($reservation, 'Clôture de la réservation (retour anticipé/tardif ou montant final ajusté)');
+            $reservation = $this->revalidateContract($reservation->id);
+        }
 
         $this->notificationService->notifyReservationCompleted($reservation);
 

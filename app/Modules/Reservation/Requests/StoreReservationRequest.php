@@ -31,6 +31,11 @@ class StoreReservationRequest extends FormRequest
             'initial_mileage'        => 'nullable|integer|min:0',
             'notes'                  => 'nullable|string',
             'agent_notes'            => 'nullable|string',
+            // Optional deposit taken at the moment of booking — recorded atomically
+            // as part of reservation creation (gated by create-reservation only),
+            // distinct from later payments which require the manage-payment permission.
+            'initial_paid_amount'    => 'nullable|numeric|min:0.01',
+            'initial_payment_method' => 'nullable|in:cash,card,bank_transfer,check,online',
         ];
     }
 }

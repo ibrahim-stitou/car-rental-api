@@ -26,7 +26,7 @@ class Reservation extends Model implements HasMedia, Auditable
         'second_driver_id', 'second_driver_name', 'second_driver_license', 'second_driver_phone',
         'pickup_date', 'return_date', 'actual_return_date',
         'pickup_location', 'return_location', 'actual_return_location', 'status',
-        'contract_generated_at', 'is_favorable', 'closure_comment',
+        'contract_generated_at', 'contract_status', 'is_favorable', 'closure_comment',
         'daily_rate', 'total_days', 'subtotal',
         'discount_percentage', 'discount_amount', 'additional_fees', 'total_amount',
         'deposit_amount', 'deposit_paid', 'deposit_paid_at',
@@ -191,6 +191,7 @@ class Reservation extends Model implements HasMedia, Auditable
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by'); }
     public function validator(): BelongsTo { return $this->belongsTo(User::class, 'validated_by'); }
     public function payments(): \Illuminate\Database\Eloquent\Relations\HasMany { return $this->hasMany(ReservationPayment::class); }
+    public function contractEvents(): \Illuminate\Database\Eloquent\Relations\HasMany { return $this->hasMany(ReservationContractEvent::class)->latest(); }
 
     // Media
     public function registerMediaCollections(): void

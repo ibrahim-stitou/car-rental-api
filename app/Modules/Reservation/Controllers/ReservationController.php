@@ -525,6 +525,50 @@ class ReservationController extends BaseController
         return $this->success(new ReservationResource($reservation->fresh(['vehicle', 'client', 'agency'])), 'Réservation prolongée avec succès');
     }
 
+    /**
+     * @OA\Patch(path="/reservations/{id}/contract/invalidate", summary="Dévalider le contrat", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\RequestBody(required=true, @OA\JsonContent(required={"reason"}, @OA\Property(property="reason", type="string"))),
+     *   @OA\Response(response=200, description="Contract invalidated")
+     * )
+     */
+    public function invalidateContract(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['reason' => 'required|string|min:5|max:500']);
+
+        $reservation = $this->service->find($id);
+        if ($reservation->contract_status !== 'valid') {
+            return $this->error("Seul un contrat valide peut être dévalidé (statut actuel : {$reservation->contract_status}).", 422);
+        }
+
+        $reservation = $this->service->invalidateContract($reservation, $request->reason);
+        return $this->success(new ReservationResource($reservation->load('contractEvents.actor')), 'Contrat dévalidé');
+    }
+
+    /**
+     * @OA\Patch(path="/reservations/{id}/contract/regenerate", summary="Régénérer le contrat", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Contract regenerated")
+     * )
+     */
+    public function regenerateContract(string $id): JsonResponse
+    {
+        $reservation = $this->service->revalidateContract($id);
+        return $this->success(new ReservationResource($reservation->load('contractEvents.actor')), 'Contrat régénéré');
+    }
+
+    /**
+     * @OA\Get(path="/reservations/{id}/contract/history", summary="Historique de validation du contrat", tags={"Reservations"}, security={{"bearerAuth":{}}},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *   @OA\Response(response=200, description="Success")
+     * )
+     */
+    public function contractHistory(string $id): JsonResponse
+    {
+        $reservation = $this->service->find($id)->load('contractEvents.actor');
+        return $this->success((new ReservationResource($reservation))->toArray(request())['contract_events']);
+    }
+
     public function credits(Request $request): JsonResponse
     {
         $perPage  = $request->integer('per_page', 15);
