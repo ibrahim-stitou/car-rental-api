@@ -7,6 +7,30 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class ReservationResource extends JsonResource
 {
+    /**
+     * Every contract PDF ever generated for this reservation — the current
+     * one plus everything archived to 'contract_history' on each
+     * regeneration — so the detail page can offer a downloadable trail for
+     * traceability, not just the latest file.
+     */
+    private function contractVersions(): array
+    {
+        $current  = $this->getMedia('contract');
+        $archived = $this->getMedia('contract_history');
+
+        return $current->concat($archived)
+            ->sortByDesc('created_at')
+            ->values()
+            ->map(fn($media) => [
+                'id'         => $media->id,
+                'url'        => $media->getUrl(),
+                'file_name'  => $media->file_name,
+                'created_at' => $media->created_at?->toISOString(),
+                'is_current' => $media->collection_name === 'contract',
+            ])
+            ->all();
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -42,8 +66,16 @@ class ReservationResource extends JsonResource
                 'created_at' => $e->created_at?->toISOString(),
             ])),
             'status'              => $this->status,
+            'rental_unit'         => $this->rental_unit,
             'daily_rate'          => $this->daily_rate,
+            'hourly_rate'         => $this->hourly_rate,
+            'monthly_rate'        => $this->monthly_rate,
             'total_days'          => $this->total_days,
+            'total_hours'         => $this->total_hours,
+            'total_months'        => $this->total_months,
+            'months_elapsed'      => $this->months_elapsed,
+            'months_due'          => $this->months_due,
+            'amount_due_so_far'   => $this->amount_due_so_far,
             'subtotal'            => $this->subtotal,
             'discount_percentage' => $this->discount_percentage,
             'discount_amount'     => $this->discount_amount,
@@ -54,6 +86,11 @@ class ReservationResource extends JsonResource
             'paid_amount'         => (float) (array_key_exists('payments_sum_amount', $this->getAttributes())
                 ? ($this->payments_sum_amount ?? 0)
                 : $this->payments()->sum('amount')),
+            // LLD only — total already billed across this reservation's 'LLD'-type invoices,
+            // distinct from paid_amount (which tracks money actually received).
+            'invoiced_amount'     => (float) (array_key_exists('lld_billing_documents_sum_total_amount', $this->getAttributes())
+                ? ($this->lld_billing_documents_sum_total_amount ?? 0)
+                : $this->lldBillingDocuments()->sum('total_amount')),
             'payment_status'      => $this->payment_status,
             'payment_method'      => $this->payment_method,
             'initial_mileage'     => $this->initial_mileage,
@@ -65,6 +102,7 @@ class ReservationResource extends JsonResource
             'notes'               => $this->notes,
             'cancellation_reason' => $this->cancellation_reason,
             'contract'            => $this->getFirstMediaUrl('contract'),
+            'contract_versions'   => $this->contractVersions(),
             'pickup_photos'       => $this->getMediaByCollection('pickup_photos'),
             'return_photos'       => $this->getMediaByCollection('return_photos'),
             'documents'           => $this->getMediaByCollection('documents'),

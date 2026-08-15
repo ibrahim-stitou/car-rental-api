@@ -39,7 +39,7 @@ class ReservationController extends BaseController
         $rawFilters = $request->only([
             'agency_id', 'vehicle_id', 'client_id', 'status',
             'payment_status', 'overdue', 'search', 'date_from',
-            'date_to', 'legacy_id'
+            'date_to', 'legacy_id', 'rental_unit'
         ]);
 
         $filters = $this->prepareFilters($rawFilters);
@@ -134,8 +134,10 @@ class ReservationController extends BaseController
         $reservation = $this->service->confirm($id);
         // Store who validated
         $reservation->update(['validated_by' => auth()->id()]);
-        // Generate and lock the contract PDF (includes the validator's stamp/signature).
-        $reservation = $this->service->generateAndLockContract($reservation->fresh(['agency', 'vehicle', 'client', 'validator']));
+        // Ensure the contract is locked with the validator's stamp/signature —
+        // generates it the first time, or re-validates it if a prior
+        // extension/edit had marked it invalidated.
+        $reservation = $this->service->ensureContractValid($reservation->fresh(['agency', 'vehicle', 'client', 'validator']));
         return $this->success(new ReservationResource($reservation), 'Reservation confirmed');
     }
 
@@ -378,16 +380,26 @@ class ReservationController extends BaseController
     {
         $reservation = $this->service->find($id);
 
+        // No-cache: this URL is stable (keyed only by reservation id) but the
+        // file behind it isn't — regenerating a contract swaps the stored
+        // media without changing the URL, and Symfony's BinaryFileResponse
+        // (which response()->file()/download() build on) auto-sets
+        // Last-Modified from the file's mtime, which is enough for browsers
+        // to serve a stale cached copy of the *previous* file on this same
+        // URL unless caching is explicitly forbidden here.
+        $noCache = ['Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0', 'Pragma' => 'no-cache'];
+
         // Once locked, always serve the stored file as-is — never regenerate
         // from current (possibly since-edited) reservation data.
         if ($reservation->contract_generated_at && ($media = $reservation->getFirstMedia('contract'))) {
             $filename = 'contract-' . $reservation->reservation_number . '.pdf';
             return $request->boolean('download')
-                ? response()->download($media->getPath(), $filename)
-                : response()->file($media->getPath(), ['Content-Type' => 'application/pdf']);
+                ? response()->download($media->getPath(), $filename, $noCache)
+                : response()->file($media->getPath(), array_merge(['Content-Type' => 'application/pdf'], $noCache));
         }
 
-        return $this->pdfService->generateReservationContract($reservation, $request->boolean('download'));
+        return $this->pdfService->generateReservationContract($reservation, $request->boolean('download'))
+            ->withHeaders($noCache);
     }
 
     /**
@@ -468,9 +480,13 @@ class ReservationController extends BaseController
     }
 
     /**
-     * Extend a reservation's return date. If a contract was already
-     * generated, it is archived to history and a fresh one is generated
-     * against the new dates.
+     * Extend a reservation's return date. This always sends the reservation
+     * back to 'pending' — even if it was already active — and, if a contract
+     * had been generated, invalidates it: an extension changes the terms the
+     * client is bound by, so it must go through the normal
+     * confirm (re-sign/re-stamp) → activate cycle again rather than silently
+     * keep running on stale paperwork. The car itself isn't touched
+     * (vehicle.status stays as-is) since it's still physically with the client.
      */
     public function extend(Request $request, string $id): JsonResponse
     {
@@ -478,6 +494,14 @@ class ReservationController extends BaseController
             'new_return_date' => 'required|date',
             'additional_fees' => 'nullable|numeric|min:0',
             'notes'           => 'nullable|string',
+            // Optional rate adjustment at extension time (e.g. a negotiated
+            // discount for a repeat/long-standing client) — only the field
+            // matching the reservation's own rental_unit actually affects
+            // billing (see Reservation::calculateTotal()), the others are
+            // harmlessly ignored if sent.
+            'daily_rate'      => 'nullable|numeric|min:0',
+            'hourly_rate'     => 'nullable|numeric|min:0',
+            'monthly_rate'    => 'nullable|numeric|min:0',
         ]);
 
         $reservation = $this->service->find($id);
@@ -511,18 +535,25 @@ class ReservationController extends BaseController
 
         // Recalculate
         $reservation->return_date = $newReturnDate;
+        foreach (['daily_rate', 'hourly_rate', 'monthly_rate'] as $rateField) {
+            if (array_key_exists($rateField, $data) && $data[$rateField] !== null) {
+                $reservation->{$rateField} = $data[$rateField];
+            }
+        }
         if (!empty($data['additional_fees'])) {
             $reservation->additional_fees = ($reservation->additional_fees ?? 0) + $data['additional_fees'];
         }
         if (!empty($data['notes'])) {
             $reservation->notes = ($reservation->notes ? $reservation->notes . "\n" : '') . '[Prolongation] ' . $data['notes'];
         }
+        $reservation->status = 'pending';
+        $reservation->validated_by = null;
         $reservation->calculateTotal();
         $reservation->save();
 
-        $reservation = $this->service->regenerateContractAfterExtension($reservation);
+        $this->service->invalidateContract($reservation, 'Prolongation de la réservation');
 
-        return $this->success(new ReservationResource($reservation->fresh(['vehicle', 'client', 'agency'])), 'Réservation prolongée avec succès');
+        return $this->success(new ReservationResource($reservation->fresh(['vehicle', 'client', 'agency'])), 'Réservation prolongée avec succès — à reconfirmer');
     }
 
     /**
@@ -574,6 +605,16 @@ class ReservationController extends BaseController
         $perPage  = $request->integer('per_page', 15);
         $agencyId = $request->query('agency_id');
 
+        // LLD (rental_unit = 'month') contracts are never owed in full up
+        // front — only the months due so far (first month at signing, +1 per
+        // whole month elapsed since, capped at the contract length; mirrors
+        // Reservation::getAmountDueSoFarAttribute()). A 24-month, 96 000 MAD
+        // contract must show a 4 000 MAD credit at signing, not 96 000.
+        $amountBasis = "CASE WHEN reservations.rental_unit = 'month'
+            THEN LEAST(reservations.total_amount, reservations.monthly_rate * LEAST(reservations.total_months, 1 + TIMESTAMPDIFF(MONTH, reservations.pickup_date, NOW())))
+            ELSE reservations.total_amount
+        END";
+
         $credits = \App\Models\Reservation::query()
             // Migrated reservations are a pure historical archive (forced to
             // completed/paid regardless of their real original status) and
@@ -581,7 +622,7 @@ class ReservationController extends BaseController
             ->whereNull('legacy_id')
             ->whereIn('status', ['completed', 'active'])
             ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
-            ->selectRaw('reservations.*, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+            ->selectRaw("reservations.*, {$amountBasis} - COALESCE(SUM(rp.amount),0) as credit_amount")
             ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
             ->groupBy('reservations.id')
             ->havingRaw('credit_amount > 0')

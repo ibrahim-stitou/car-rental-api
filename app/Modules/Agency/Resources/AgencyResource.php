@@ -19,6 +19,12 @@ class AgencyResource extends JsonResource
             'phone2'     => $this->phone2,
             'email'      => $this->email,
             'is_active'  => $this->is_active,
+            'legal_form' => $this->legal_form,
+            'capital'    => $this->capital,
+            'rc'         => $this->rc,
+            'tax_id'     => $this->tax_id,
+            'patente'    => $this->patente,
+            'ice'        => $this->ice,
             'manager'    => $this->whenLoaded('manager', fn() => [
                 'id'        => $this->manager->id,
                 'full_name' => $this->manager->full_name,

@@ -69,13 +69,21 @@ class SendScheduledAlerts extends Command
 
     protected function alertReservationsOverdue(): int
     {
-        $reservations = Reservation::overdue()->with(['vehicle', 'client', 'agency'])->get();
+        // "Contrat terminé" : le retour prévu est dépassé de plus d'1 jour et
+        // la réservation n'a toujours pas été clôturée — volontairement pas
+        // déclenché dès la première minute de retard (bruit), ni sur la
+        // clôture normale d'une réservation (ce n'est pas un événement à
+        // notifier en soi).
+        $reservations = Reservation::where('status', 'active')
+            ->where('return_date', '<', now()->subDay())
+            ->with(['vehicle', 'client', 'agency'])
+            ->get();
         $count = 0;
         foreach ($reservations as $reservation) {
             $this->notificationService->notifyReservationOverdue($reservation);
             $count++;
         }
-        $this->line("  📅 Réservations en retard : {$count}");
+        $this->line("  📅 Contrats terminés (retard > 1 jour) : {$count}");
         return $count;
     }
 

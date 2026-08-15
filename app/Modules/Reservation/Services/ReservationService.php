@@ -22,7 +22,8 @@ class ReservationService
      */
     private const CONTRACT_RELEVANT_FIELDS = [
         'pickup_date', 'return_date', 'pickup_location', 'return_location',
-        'daily_rate', 'discount_percentage', 'additional_fees', 'total_amount',
+        'daily_rate', 'hourly_rate', 'monthly_rate', 'rental_unit', 'total_hours', 'total_months',
+        'discount_percentage', 'additional_fees', 'total_amount',
     ];
 
     public function __construct(
@@ -36,7 +37,11 @@ class ReservationService
             $dataTable->addColumn('client_name', fn($r) => $r->client?->full_name ?? '—')
                 ->addColumn('vehicle_name', fn($r) => $r->vehicle?->full_name ?? '—')
                 ->addColumn('agency_name', fn($r) => $r->agency?->name ?? '—')
-                ->addColumn('duration', fn($r) => $r->total_days . ' jour(s)')
+                ->addColumn('duration', fn($r) => match ($r->rental_unit) {
+                    'hour'  => $r->total_hours . ' heure(s)',
+                    'month' => $r->total_months . ' mois',
+                    default => $r->total_days . ' jour(s)',
+                })
                 ->filterColumn('client_name', function ($query, $keyword) {
                     $query->whereHas('client', function ($q) use ($keyword) {
                         $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$keyword}%"]);
@@ -47,7 +52,7 @@ class ReservationService
 
     public function list(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
-        return $this->repository->paginate($perPage, $filters, ['agency', 'vehicle', 'client', 'creator'], 'created_at', 'desc', [], ['payments' => 'amount']);
+        return $this->repository->paginate($perPage, $filters, ['agency', 'vehicle', 'client', 'creator'], 'created_at', 'desc', [], ['payments' => 'amount', 'lldBillingDocuments' => 'total_amount']);
     }
 
     public function search(string $term, int $perPage = 15): LengthAwarePaginator
@@ -57,7 +62,7 @@ class ReservationService
 
     public function find(string $id): Reservation
     {
-        return $this->repository->findByIdOrFail($id, ['agency', 'vehicle', 'client', 'creator'], ['payments' => 'amount']);
+        return $this->repository->findByIdOrFail($id, ['agency', 'vehicle', 'client', 'creator'], ['payments' => 'amount', 'lldBillingDocuments' => 'total_amount']);
     }
 
     public function create(array $data): Reservation
@@ -72,11 +77,19 @@ class ReservationService
         $vehicle = Vehicle::findOrFail($data['vehicle_id']);
         $data['daily_rate'] = $data['daily_rate'] ?? $vehicle->daily_rate;
         $data['deposit_amount'] = $data['deposit_amount'] ?? $vehicle->deposit_amount;
+        if (($data['rental_unit'] ?? 'day') === 'hour') {
+            $data['hourly_rate'] = $data['hourly_rate'] ?? $vehicle->hourly_rate;
+        }
+        if (($data['rental_unit'] ?? 'day') === 'month') {
+            $data['monthly_rate'] = $data['monthly_rate'] ?? $vehicle->monthly_rate;
+        }
 
         $reservation = new Reservation($data);
         $reservation->calculateTotal();
         $data = array_merge($data, [
             'total_days'      => $reservation->total_days,
+            'total_hours'     => $reservation->total_hours,
+            'total_months'    => $reservation->total_months,
             'subtotal'        => $reservation->subtotal,
             'discount_amount' => $reservation->discount_amount,
             'total_amount'    => $reservation->total_amount,
@@ -102,8 +115,6 @@ class ReservationService
 
             return $reservation;
         });
-
-        $this->notificationService->notifyReservationCreated($reservation);
 
         return $reservation;
     }
@@ -226,22 +237,20 @@ class ReservationService
     }
 
     /**
-     * After a reservation's dates change (extension), a previously-valid
-     * contract no longer reflects reality. Invalidate then immediately
-     * regenerate against the current data, so the flow stays coherent with
-     * the manual invalidate/revalidate primitives instead of a bespoke path.
-     * No-op if no contract had been generated yet — the next generation
-     * will simply use the already-updated dates.
+     * Single place that guarantees a reservation leaves with a trustworthy,
+     * up-to-date contract, whichever state it started from: generates it the
+     * first time, silently re-validates it if it had been invalidated (e.g.
+     * by a prior extension or edit), or leaves it untouched if already valid.
+     * Used by confirm() so "Confirmer" is always the moment a fresh,
+     * correctly signed/stamped contract gets locked in.
      */
-    public function regenerateContractAfterExtension(Reservation $reservation): Reservation
+    public function ensureContractValid(Reservation $reservation): Reservation
     {
-        if ($reservation->contract_status === 'not_generated') {
-            return $reservation;
-        }
-
-        $this->invalidateContract($reservation, 'Prolongation de la réservation');
-
-        return $this->revalidateContract($reservation->id);
+        return match ($reservation->contract_status) {
+            'not_generated' => $this->generateAndLockContract($reservation),
+            'invalidated'   => $this->revalidateContract($reservation->id),
+            default         => $reservation,
+        };
     }
 
     private function logContractEvent(Reservation $reservation, string $eventType, ?string $reason = null): void
@@ -255,7 +264,10 @@ class ReservationService
                 'return_date'          => optional($reservation->return_date)->toIso8601String(),
                 'pickup_location'      => $reservation->pickup_location,
                 'return_location'      => $reservation->return_location,
+                'rental_unit'          => $reservation->rental_unit,
                 'daily_rate'           => $reservation->daily_rate,
+                'hourly_rate'          => $reservation->hourly_rate,
+                'total_hours'          => $reservation->total_hours,
                 'discount_percentage'  => $reservation->discount_percentage,
                 'additional_fees'      => $reservation->additional_fees,
                 'total_amount'         => $reservation->total_amount,
@@ -286,13 +298,18 @@ class ReservationService
             'actual_return_date' => $data['actual_return_date'] ?? now(),
         ]));
 
-        // The agent's explicit final amount (e.g. after negotiating an early
-        // return) always wins; otherwise recalculate — which also applies the
-        // early-return proration and picks up any additional_fees change.
+        // Always recalculate first — this is what prorates total_days (and
+        // subtotal/discount_amount) to the actual return date rather than
+        // leaving them at the originally-planned duration. The agent's
+        // explicit final amount (e.g. after negotiating an early return)
+        // then overrides total_amount on top of that, it never skips the
+        // recalculation (skipping it used to leave total_days stuck at the
+        // planned value whenever an override was supplied — which is the
+        // common case, since the closure dialog pre-fills a suggested amount
+        // for every early return).
+        $reservation->calculateTotal();
         if ($finalAmountOverride !== null) {
             $reservation->total_amount = $finalAmountOverride;
-        } else {
-            $reservation->calculateTotal();
         }
 
         $wasEarlyOrLate = $reservation->actual_return_date && $reservation->return_date
@@ -311,8 +328,6 @@ class ReservationService
             $this->invalidateContract($reservation, 'Clôture de la réservation (retour anticipé/tardif ou montant final ajusté)');
             $reservation = $this->revalidateContract($reservation->id);
         }
-
-        $this->notificationService->notifyReservationCompleted($reservation);
 
         return $reservation;
     }

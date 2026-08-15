@@ -24,6 +24,7 @@ class Agency extends Model implements HasMedia, Auditable
     protected $fillable = [
         'name', 'address', 'city', 'country', 'phone', 'phone2',
         'email', 'is_active', 'manager_id',
+        'legal_form', 'capital', 'rc', 'tax_id', 'patente', 'ice',
     ];
 
     protected $auditExclude = ['updated_at'];

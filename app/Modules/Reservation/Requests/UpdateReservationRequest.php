@@ -16,6 +16,8 @@ class UpdateReservationRequest extends FormRequest
             'pickup_location'     => 'sometimes|string|max:255',
             'return_location'     => 'sometimes|string|max:255',
             'daily_rate'          => 'sometimes|numeric|min:0',
+            'hourly_rate'         => 'nullable|numeric|min:0',
+            'monthly_rate'        => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
             'additional_fees'     => 'nullable|numeric|min:0',
             'deposit_amount'      => 'nullable|numeric|min:0',

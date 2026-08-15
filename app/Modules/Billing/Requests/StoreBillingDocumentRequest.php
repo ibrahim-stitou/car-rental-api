@@ -3,6 +3,7 @@
 namespace App\Modules\Billing\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreBillingDocumentRequest extends FormRequest
 {
@@ -10,10 +11,16 @@ class StoreBillingDocumentRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'type'                     => 'required|in:BC,BR,BL,DV,FA,AV',
+        $rules = [
+            'type'                     => 'required|in:BC,BR,BL,DV,FA,AV,LLD',
             'agency_id'                => 'required|uuid|exists:agencies,id',
-            'reservation_id'           => 'nullable|uuid|exists:reservations,id',
+            // LLD documents must be linked to their long-term contract — this
+            // is what lets the invoice pull its months-due/monthly-rate data
+            // from a single source of truth (the reservation) instead of
+            // carrying its own, separately-editable figures.
+            'reservation_id'           => $this->input('type') === 'LLD'
+                ? ['required', 'uuid', Rule::exists('reservations', 'id')->where('rental_unit', 'month')]
+                : 'nullable|uuid|exists:reservations,id',
             'client_id'                => 'nullable|uuid|exists:clients,id',
             'client_name'              => 'required|string|max:255',
             'client_ice'               => 'nullable|string|max:30',
@@ -36,5 +43,7 @@ class StoreBillingDocumentRequest extends FormRequest
             'items.*.tax_rate'         => 'nullable|numeric|min:0|max:100',
             'items.*.notes'            => 'nullable|string',
         ];
+
+        return $rules;
     }
 }

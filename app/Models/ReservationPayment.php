@@ -14,7 +14,7 @@ class ReservationPayment extends Model implements Auditable
     protected $auditExclude = ['updated_at'];
 
     protected $fillable = [
-        'reservation_id', 'recorded_by', 'amount', 'payment_method',
+        'reservation_id', 'billing_document_id', 'recorded_by', 'amount', 'payment_method',
         'payment_date', 'reference', 'notes',
     ];
 
@@ -31,5 +31,10 @@ class ReservationPayment extends Model implements Auditable
     public function recorder()
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function billingDocument()
+    {
+        return $this->belongsTo(BillingDocument::class);
     }
 }

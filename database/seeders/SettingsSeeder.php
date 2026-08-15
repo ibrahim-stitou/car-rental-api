@@ -115,6 +115,11 @@ class SettingsSeeder extends Seeder
             ['group' => 'counters', 'key' => 'br_separator', 'type' => 'string',  'label' => 'BR · Séparateur',   'value' => '-'],
             ['group' => 'counters', 'key' => 'br_digits',    'type' => 'integer', 'label' => 'BR · Chiffres',     'value' => '6'],
             ['group' => 'counters', 'key' => 'br_current',   'type' => 'integer', 'label' => 'BR · Compteur',     'value' => '0'],
+            // Facture LLD
+            ['group' => 'counters', 'key' => 'lld_prefix',    'type' => 'string',  'label' => 'LLD · Préfixe',     'value' => 'LLD'],
+            ['group' => 'counters', 'key' => 'lld_separator', 'type' => 'string',  'label' => 'LLD · Séparateur',  'value' => '-'],
+            ['group' => 'counters', 'key' => 'lld_digits',    'type' => 'integer', 'label' => 'LLD · Chiffres',    'value' => '6'],
+            ['group' => 'counters', 'key' => 'lld_current',   'type' => 'integer', 'label' => 'LLD · Compteur',    'value' => '0'],
             // Réservation
             ['group' => 'counters', 'key' => 'reservation_prefix',    'type' => 'string',  'label' => 'RES · Préfixe',    'value' => 'RES'],
             ['group' => 'counters', 'key' => 'reservation_separator', 'type' => 'string',  'label' => 'RES · Séparateur', 'value' => '-'],

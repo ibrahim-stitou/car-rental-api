@@ -24,6 +24,11 @@ class BillingDocumentResource extends JsonResource
             'reservation'            => $this->whenLoaded('reservation', fn() => [
                 'id'                 => $this->reservation->id,
                 'reservation_number' => $this->reservation->reservation_number,
+                'rental_unit'        => $this->reservation->rental_unit,
+                'total_months'       => $this->reservation->total_months,
+                'monthly_rate'       => $this->reservation->monthly_rate,
+                'months_due'         => $this->reservation->months_due,
+                'amount_due_so_far'  => $this->reservation->amount_due_so_far,
             ]),
             'client'                 => $this->whenLoaded('client', fn() => [
                 'id'        => $this->client->id,

@@ -26,6 +26,7 @@ class VehicleController extends BaseController
      *   @OA\Parameter(name="agency_id", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="status", in="query", @OA\Schema(type="string", enum={"available","rented","maintenance","out_of_service"})),
      *   @OA\Parameter(name="category", in="query", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="returning_today", in="query", description="Uniquement les véhicules en location active dont le retour est prévu aujourd'hui", @OA\Schema(type="boolean")),
      *   @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
      *   @OA\Response(response=200, description="Success"),
@@ -39,7 +40,7 @@ class VehicleController extends BaseController
             return $this->paginated($data, VehicleResource::class);
         }
 
-        $filters = $request->only(['agency_id', 'status', 'category', 'fuel_type', 'transmission', 'is_active']);
+        $filters = $request->only(['agency_id', 'status', 'category', 'fuel_type', 'transmission', 'is_active', 'returning_today']);
         $data = $this->service->list(
             $filters,
             $request->integer('per_page', 15),

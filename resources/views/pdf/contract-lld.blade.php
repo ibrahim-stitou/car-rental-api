@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Contrat de Location — {{ $reservation->reservation_number }}</title>
+    <title>Contrat de Location Longue Durée — {{ $reservation->reservation_number }}</title>
     <style>
+        {{-- Kept byte-for-byte identical to pdf/contract.blade.php's stylesheet
+             on purpose — this file exists so the LLD contract's *content* can
+             diverge (billing section, a couple of clauses) without touching
+             the short-term contract template, while both still look like the
+             same document family. If you want LLD to look visually different
+             in the future, this is the file to change. --}}
         @font-face { font-family: 'Amiri'; src: url('{{ $arabicFontRegular }}') format('truetype'); font-weight: normal; }
         @font-face { font-family: 'Amiri'; src: url('{{ $arabicFontBold }}') format('truetype'); font-weight: bold; }
 
         * { margin: 0; padding: 0; }
-        {{-- Printers commonly have a non-printable hardware margin wider than
-             a bare @page margin accounts for, which clips content sitting
-             flush against it (reported: first letters cut off on the left).
-             The extra .page-pad wrapper below adds a safety buffer inside the
-             page margin so bordered blocks never sit on the physical edge. --}}
         @page { margin: 18px 22px; }
         body { font-family: DejaVu Sans, sans-serif; font-size: 8.4px; color: #000; }
         .page-pad { padding: 0 6px; }
@@ -21,38 +22,9 @@
         table { border-collapse: collapse; width: 100%; table-layout: fixed; }
         td, th { vertical-align: top; }
 
-        {{-- Full-page-height trick: DomPDF/CSS2.1 has no flex/grid, so the
-             only reliable way to make a page's content always reach the true
-             bottom of the sheet — instead of trailing off with dead white
-             space — is the classic "fixed-height table + unconstrained
-             spacer row" technique: give the wrapping table an explicit
-             height equal to the printable area, and let a row with no
-             content height absorb whatever space is left over. A4
-             (210×297mm) at DomPDF's default 96dpi ≈ 793×1122px; minus the
-             18px top/bottom @page margin, the printable height is
-             ≈1086px. 1070px is used as a small safety margin.
-
-             IMPORTANT: this trick only stretches a *box* (border/background)
-             to fill the page — it must never be combined with enlarging the
-             actual text inside it, since real content can silently overflow
-             past one physical page (which is what caused a spurious 3rd
-             page previously). Only the frame/border stretches; the CGL body
-             copy below keeps its original, page-tested sizes. --}}
         .page-frame { width: 100%; height: 1070px; }
         .page-frame td { padding: 0; }
 
-        {{-- Arabic text is pre-shaped into visual glyph order server-side (see
-             PdfService::ar()) since dompdf has no reliable bidi/RTL engine of
-             its own — it just draws whatever order it's given, left to right.
-             So .ar content is plain LTR text here, only right-aligned for
-             layout; no direction/unicode-bidi properties. This trick only
-             produces correct reading order for a SINGLE visual line: if the
-             browser itself has to wrap the shaped string, it breaks the line
-             using normal LTR rules, which puts the *end* of the sentence on
-             the first (top) line and the *start* on the next — i.e. reversed
-             reading order between wrapped lines. nowrap turns that failure
-             mode into visible overflow (still readable) instead of silently
-             scrambled Arabic. --}}
         .ar {
             font-family: 'Amiri', DejaVu Sans, sans-serif;
             text-align: right;
@@ -65,15 +37,10 @@
 
         /* ── header ───────────────────────────────────────────── */
         .header-table td { padding: 12px 18px; }
-        /* divider border between the two header sections removed per request */
         .header-left { width: 66%; }
-        /* FIX: logo enlarged further (was max-height:92px / max-width:280px) */
         .header-logo-img { max-height: 120px; max-width: 350px; display: block; margin-bottom: 6px; }
-        /* FIX: header text sizes increased further */
         .header-logo-text { font-size: 29px; font-weight: bold; color: #1a3a8f; letter-spacing: 0.5px; }
         .header-agency-lines { font-size: 10px; color: #222; line-height: 1.7; margin-top: 4px; }
-        /* "Location de voiture sans chauffeur" pinned to the bottom of the
-           header row, bigger text per request */
         .header-right {
             width: 34%;
             text-align: center;
@@ -95,13 +62,11 @@
         .split-left { width: 50%; border-right: 1px solid #000; vertical-align: top; }
         .split-right { width: 50%; vertical-align: top; }
 
-        /* field rows (fr label | value | ar label) */
         .frow-table td { padding: 6px 12px; border-bottom: 1px solid #ddd; font-size: 8.4px; }
         .frow-label { width: 40%; white-space: nowrap; }
         .frow-value { width: 34%; font-weight: bold; }
         .frow-ar { width: 26%; }
 
-        /* Subtle brand-color accent on section subheads for a more modern feel */
         .subhead { background: #eef1f6; font-weight: bold; padding: 6px 12px; border-bottom: 1px solid #000; border-top: 1px solid #000; border-left: 3px solid #1a3a8f; font-size: 8.6px; }
         .subhead-ar { float: right; }
 
@@ -116,11 +81,6 @@
         .sig-row-table tr.no-border td { border-bottom: none; }
         .sig-row-line { border-bottom: 1px solid #999; height: 16px; }
         .sig-row-line.tall { height: 50px; }
-        {{-- dompdf only understands CSS 2.1, no flexbox/grid — overlap is
-             done the old way: a fixed-height position:relative box with the
-             two images position:absolute inside it, offset so the stamp
-             sits diagonally over the signature like a real stamped
-             document. --}}
         .sig-row-line.with-assets { position: relative; height: 90px; border-bottom: none; }
         .sig-img { position: absolute; left: 0; top: 0; max-height: 42px; max-width: 130px; }
         .stamp-img { position: absolute; left: 45px; top: 16px; max-height: 72px; max-width: 108px; opacity: 0.85; }
@@ -156,14 +116,6 @@
 
         /* ── page 2 ───────────────────────────────────────────── */
         .page-break { page-break-before: always; }
-        {{-- FIX: the whole CGL page is enclosed in a bordered, rounded frame
-             that always spans the full page height (via .page-frame above),
-             so the page never trails off with dead space below the text —
-             but the frame's own padding/border must stay tight and the body
-             copy below MUST NOT be enlarged from its original, page-tested
-             sizes, or the ten articles overflow onto a spurious extra page
-             (this happened previously: enlarging text pushed the content
-             past one A4 page → 3 total pages instead of 2). --}}
         .cgl-frame { border: 1px solid #000; border-radius: 4px; padding: 12px 16px; }
         .cgl-title { text-align: center; margin: 10px 0 18px; }
         .cgl-title h1 { font-size: 14px; font-weight: bold; border: 1.5px solid #1a3a8f; color: #1a3a8f; border-radius: 20px; display: inline-block; padding: 8px 28px; letter-spacing: 0.5px; }
@@ -205,7 +157,7 @@
                             </div>
                         </td>
                         <td class="header-right">
-                            Location de voiture<br>sans chauffeur
+                            Location Longue Durée<br>sans chauffeur
                         </td>
                     </tr>
                 </table>
@@ -358,17 +310,12 @@
                                 <tr>
                                     <th style="width:20%;"></th>
                                     <th>Départ <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الانطلاق') }}</span></th>
-                                    <th>Retour <span class="dr-ar ar">{{ \App\Services\PdfService::ar('العودة') }}</span></th>
+                                    <th>Retour prévu <span class="dr-ar ar">{{ \App\Services\PdfService::ar('العودة المتوقعة') }}</span></th>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Date <span class="dr-ar ar">{{ \App\Services\PdfService::ar('التاريخ') }}</span></td>
                                     <td>{{ $pickup?->format('d/m/Y') ?? '—' }}</td>
                                     <td>{{ ($returnActual ?? $returnPlanned)?->format('d/m/Y') ?? '—' }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="lbl">Heure <span class="dr-ar ar">{{ \App\Services\PdfService::ar('الساعة') }}</span></td>
-                                    <td>{{ $pickup?->format('H:i') ?? '—' }}</td>
-                                    <td>{{ ($returnActual ?? $returnPlanned)?->format('H:i') ?? '—' }}</td>
                                 </tr>
                                 <tr>
                                     <td class="lbl">Km <span class="dr-ar ar">{{ \App\Services\PdfService::ar('كيلومتر') }}</span></td>
@@ -387,21 +334,18 @@
                                 </tr>
                             </table>
 
-                            <div class="subhead">Facturation (Livraison) <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('فاتورة (التسليم)') }}</span></div>
+                            <div class="subhead">Facturation — Location Longue Durée <span class="subhead-ar ar">{{ \App\Services\PdfService::ar('فاتورة الكراء الطويل الأمد') }}</span></div>
                             <table class="fact-table">
-                                @if ($reservation->rental_unit === 'hour')
                                 <tr>
-                                    <td class="fl">Heure(s) :</td>
-                                    <td class="fv">{{ $reservation->total_hours ?? '—' }} x {{ number_format($reservation->hourly_rate ?? 0, 2) }}</td>
-                                    <td class="fa ar">{{ \App\Services\PdfService::ar('الساعات :') }}</td>
+                                    <td class="fl">Durée du contrat :</td>
+                                    <td class="fv">{{ $reservation->total_months ?? '—' }} mois</td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('مدة العقد :') }}</td>
                                 </tr>
-                                @else
                                 <tr>
-                                    <td class="fl">Journée(s) :</td>
-                                    <td class="fv">{{ $reservation->total_days ?? '—' }} x {{ number_format($reservation->daily_rate ?? 0, 2) }}</td>
-                                    <td class="fa ar">{{ \App\Services\PdfService::ar('الأيام :') }}</td>
+                                    <td class="fl">Loyer mensuel :</td>
+                                    <td class="fv">{{ number_format($reservation->monthly_rate ?? 0, 2) }} / mois</td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('الكراء الشهري :') }}</td>
                                 </tr>
-                                @endif
                                 <tr>
                                     <td class="fl">Divers :</td>
                                     <td class="fv">{{ ($reservation->additional_fees ?? 0) > 0 ? number_format($reservation->additional_fees, 2) : 'x' }}</td>
@@ -418,9 +362,9 @@
                                     <td class="fa ar">{{ \App\Services\PdfService::ar('الضريبة :') }}</td>
                                 </tr>
                                 <tr>
-                                    <td class="fl">Total T.T.C. :</td>
+                                    <td class="fl">Total contrat T.T.C. :</td>
                                     <td class="fv"><b>{{ number_format($reservation->total_amount ?? 0, 2) }}</b></td>
-                                    <td class="fa ar">{{ \App\Services\PdfService::ar('المجموع مع الضريبة :') }}</td>
+                                    <td class="fa ar">{{ \App\Services\PdfService::ar('مجموع العقد مع الضريبة :') }}</td>
                                 </tr>
                             </table>
 
@@ -462,7 +406,7 @@
                                     <td colspan="2">Date : {{ now()->format('d/m/Y') }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('التاريخ :') }}</span></td>
                                 </tr>
                                 <tr>
-                                    <td colspan="2">Retour Présence à bord : {{ $returnActual?->format('d/m/Y') ?? '—' }} <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('الرجوع النهائي :') }}</span></td>
+                                    <td colspan="2">Loyer payable d'avance, le 1ᵉʳ mois dû dès la signature <span class="ar" style="float:right;">{{ \App\Services\PdfService::ar('الكراء يؤدى مسبقا، الشهر الأول عند التوقيع') }}</span></td>
                                 </tr>
                             </table>
 
@@ -491,7 +435,7 @@
     <table class="page-frame">
         <tr><td class="cgl-frame">
 
-                <div class="cgl-title"><h1>CONDITIONS GENERALES DE LOCATION</h1></div>
+                <div class="cgl-title"><h1>CONDITIONS GENERALES DE LOCATION LONGUE DUREE</h1></div>
                 <div class="cgl-intro">
                     Le present contrat a été etabli et prend date comme indiqué au verso. il engage qui sera appelé le loueur et la personne Société
                     ou Compagnie par qui est signé ce contrat, qui sera dénommée " le locataire"
@@ -559,13 +503,13 @@
                         </td>
                         <td>
                             <div class="cgl-article">
-                                <h4>Art. 6- LOCATION, CAUTION, PROLONGATION-</h4>
-                                <p>Les prix de la location, ainsi que la caution, sont payables d'avance. La caution ne pourra servir, en aucun
-                                    cas au loueur, faire parvenir le montant, de la location en cours, sous peine à une prolongation de locataire.
-                                    A fin d'éviter toutes contestation et pour le cas ou le locateur voudrait conserver la voiture pour un temps
-                                    supérieur à celui indiqué dans le contrat, il devra après avoir obtenu l'accord de s'exposer à des poursuites
-                                    pour détournement de voiture ou abus de confiance. La journée de location compte de 0 heures à 24 heures et
-                                    toute journées commencées est due en entier.</p>
+                                <h4>Art. 6- LOYER, CAUTION, RECONDUCTION-</h4>
+                                <p>Le loyer mensuel, ainsi que la caution, sont payables d'avance : le premier mois est dû dès la signature du
+                                    présent contrat, chaque mois suivant devenant exigible à sa date anniversaire. Tout mois de location commencé
+                                    est dû en entier. La caution ne pourra servir, en aucun cas, à régler un loyer échu. A défaut de règlement d'un
+                                    mois échu, le loueur pourra mettre fin au contrat après mise en demeure restée sans effet, sans préjudice des
+                                    sommes déjà dues. Toute résiliation anticipée à l'initiative du locataire donne lieu à facturation au prorata
+                                    des mois entamés jusqu'à la restitution effective du véhicule.</p>
                             </div>
                             <div class="cgl-article">
                                 <h4>Art. 7- RAPATRIEMENT DE LA VOITURE-</h4>

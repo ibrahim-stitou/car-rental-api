@@ -63,17 +63,25 @@ class ReservationRepository extends BaseRepository
             }
         }
 
-        // 4. Chevauchement de période (pickup_date <= date_to ET return_date >= date_from)
-        if (!empty($filters['date_from'])) {
-            $dateFrom = $filters['date_from'];
-            unset($filters['date_from']);
-            $query->whereDate('return_date', '>=', $dateFrom);
-        }
+        // 4. Dates : si seule la date de fin est fournie, on veut les réservations
+        // dont le retour tombe exactement ce jour-là (pas un chevauchement de
+        // période) — c'est le cas d'usage "qu'est-ce qui revient tel jour ?".
+        // Si les deux dates sont fournies, on garde la recherche par période
+        // (chevauchement pickup_date <= date_to ET return_date >= date_from).
+        $hasDateFrom = !empty($filters['date_from']);
+        $hasDateTo   = !empty($filters['date_to']);
 
-        if (!empty($filters['date_to'])) {
-            $dateTo = $filters['date_to'];
+        if ($hasDateTo && !$hasDateFrom) {
+            $query->whereDate('return_date', '=', $filters['date_to']);
             unset($filters['date_to']);
-            $query->whereDate('pickup_date', '<=', $dateTo);
+        } else {
+            if ($hasDateFrom) {
+                $query->whereDate('return_date', '>=', $filters['date_from']);
+            }
+            if ($hasDateTo) {
+                $query->whereDate('pickup_date', '<=', $filters['date_to']);
+            }
+            unset($filters['date_from'], $filters['date_to']);
         }
 
         // 5. Délègue le reste (agency_id, vehicle_id, client_id, status, payment_status, etc.) au BaseRepository

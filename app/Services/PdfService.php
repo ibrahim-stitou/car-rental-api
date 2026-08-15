@@ -71,7 +71,7 @@ class PdfService
     {
         $data = $this->prepareContractData($reservation);
 
-        $pdf = Pdf::loadView('pdf.contract', $data)
+        $pdf = Pdf::loadView($this->contractView($reservation), $data)
             ->setPaper('A4', 'portrait')
             ->setOptions(self::CONTRACT_PDF_OPTIONS, true);
 
@@ -80,6 +80,18 @@ class PdfService
         return $download
             ? $pdf->download($filename)
             : $pdf->stream($filename);
+    }
+
+    /**
+     * LLD (rental_unit = 'month') contracts use a dedicated template
+     * (resources/views/pdf/contract-lld.blade.php) — kept as a separate file
+     * rather than branched inside pdf.contract so its layout/wording can
+     * evolve independently for long-term leases without touching the
+     * short-term (day/hour) contract.
+     */
+    private function contractView(Reservation $reservation): string
+    {
+        return $reservation->rental_unit === 'month' ? 'pdf.contract-lld' : 'pdf.contract';
     }
 
     public function generateBillingDocument(BillingDocument $document, bool $download = false): Response
@@ -116,7 +128,7 @@ class PdfService
     {
         $data = $this->prepareContractData($reservation);
 
-        $pdf = Pdf::loadView('pdf.contract', $data)
+        $pdf = Pdf::loadView($this->contractView($reservation), $data)
             ->setPaper('A4', 'portrait')
             ->setOptions(self::CONTRACT_PDF_OPTIONS, true);
 
@@ -240,7 +252,19 @@ class PdfService
             }
         }
 
-        $company = Setting::where('group', 'company')->pluck('value', 'key')->toArray();
+        // Fiscal/legal identifiers now live on the agency itself (each billing
+        // document belongs to one agency, and agencies are distinct legal
+        // entities) instead of a single global "company" settings row.
+        $agency  = $document->agency;
+        $company = [
+            'name'          => $agency?->name ?? config('app.name'),
+            'company_type'  => $agency?->legal_form,
+            'capital'       => $agency?->capital,
+            'rc'            => $agency?->rc,
+            'if'            => $agency?->tax_id,
+            'patent'        => $agency?->patente,
+            'ice'           => $agency?->ice,
+        ];
 
         $tvaByRate = [];
         foreach ($document->items as $item) {

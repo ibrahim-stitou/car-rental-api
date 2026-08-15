@@ -3,6 +3,7 @@
 namespace App\Modules\Billing\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateBillingDocumentRequest extends FormRequest
 {
@@ -12,6 +13,11 @@ class UpdateBillingDocumentRequest extends FormRequest
     {
         return [
             'status'                   => 'sometimes|in:draft,pending,approved,rejected,paid,cancelled',
+            'type'                     => 'sometimes|in:BC,BR,BL,DV,FA,AV,LLD',
+            'agency_id'                => 'sometimes|uuid|exists:agencies,id',
+            'reservation_id'           => $this->input('type') === 'LLD'
+                ? ['required', 'uuid', Rule::exists('reservations', 'id')->where('rental_unit', 'month')]
+                : 'nullable|uuid|exists:reservations,id',
             'client_name'              => 'sometimes|string|max:255',
             'client_ice'               => 'nullable|string|max:30',
             'client_address'           => 'nullable|string',

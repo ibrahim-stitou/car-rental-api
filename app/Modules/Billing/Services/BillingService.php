@@ -241,7 +241,7 @@ class BillingService
     {
         $document = $this->repository->findByIdOrFail($id);
 
-        if ($document->type !== 'FA') {
+        if (!in_array($document->type, ['FA', 'LLD'], true)) {
             abort(422, 'Seules les factures peuvent être marquées comme payées.');
         }
 
@@ -258,6 +258,27 @@ class BillingService
         $this->notificationService->notifyBillingPaid($document);
 
         return $document;
+    }
+
+    /**
+     * Inverse of markAsPaid() — used when the reservation payment that
+     * settled this invoice gets deleted, so the invoice doesn't stay
+     * permanently stuck at "paid" with no way to correct it.
+     */
+    public function revertPayment(string $id): BillingDocument
+    {
+        $document = $this->repository->findByIdOrFail($id);
+
+        $document->update([
+            'status'            => 'approved',
+            'paid_amount'       => 0,
+            'balance'           => $document->total_amount,
+            'payment_method'    => null,
+            'payment_reference' => null,
+            'paid_at'           => null,
+        ]);
+
+        return $document->fresh();
     }
 
     public function createFromReservation(string $reservationId, string $type = 'FA'): BillingDocument

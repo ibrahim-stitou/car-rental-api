@@ -32,16 +32,22 @@ class Setting extends Model
 
     public static function set(string $group, string $key, mixed $value): void
     {
-        self::where('group', $group)->where('key', $key)
-            ->update(['value' => is_array($value) ? json_encode($value) : (string) $value]);
+        self::updateOrCreate(
+            ['group' => $group, 'key' => $key],
+            ['value' => is_array($value) ? json_encode($value) : (string) $value]
+        );
     }
 
     public static function updateGroup(string $group, array $data): void
     {
+        // updateOrCreate (not a plain update()) so a key that has no row yet
+        // — e.g. a new counter type added after the settings seeder last ran
+        // — actually gets persisted instead of silently no-oping.
         foreach ($data as $key => $value) {
-            self::where('group', $group)->where('key', $key)->update([
-                'value' => is_array($value) ? json_encode($value) : (string) $value,
-            ]);
+            self::updateOrCreate(
+                ['group' => $group, 'key' => $key],
+                ['value' => is_array($value) ? json_encode($value) : (string) $value]
+            );
         }
     }
 

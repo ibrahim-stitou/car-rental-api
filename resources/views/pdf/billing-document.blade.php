@@ -48,7 +48,7 @@
 
         .lbl  { font-size: 7px; font-weight: bold; color: #999; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
         .name { font-size: 11px; font-weight: bold; color: #1e3a5f; margin-bottom: 2px; }
-        .row  { font-size: 9px; color: #444; line-height: 1.8; }
+        .row  { font-size: 9px; color: #444; line-height: 1.8; white-space: pre-line; }
         .key  { color: #888; font-size: 8px; }
         .val-big { font-size: 13px; font-weight: bold; color: #1e3a5f; }
 
@@ -67,6 +67,7 @@
         }
         table.items tbody td.r { text-align: right; }
         table.items tbody td.c { text-align: center; }
+        table.items tbody td.desc { white-space: pre-line; }
         table.items tbody tr.even td { background: #f8f9fb; }
 
         /* ── Totals ──────────────────────────────────────────────────── */
@@ -136,9 +137,13 @@
     $fPatent = $company['patent']       ?? null;
     $fIce    = $company['ice']          ?? null;
 
+    // $fCap is free-text (the agency admin enters their own formatting/currency,
+    // e.g. "100 000 MAD") — displayed as-is, never reformatted as a number:
+    // a (float) cast would silently truncate at the first non-numeric
+    // character (space, currency code) and print a wrong, garbled amount.
     $fLine1 = $fName
         . ($fType ? ' — ' . $fType : '')
-        . ($fCap  ? ' · Capital : ' . number_format((float)$fCap, 2, ',', ' ') . ' MAD' : '');
+        . ($fCap  ? ' · Capital : ' . $fCap : '');
 
     $fParts = array_values(array_filter([
         $fRc     ? 'RC : '      . $fRc     : null,
@@ -234,7 +239,7 @@
             @forelse($document->items as $loop_item)
                 <tr class="{{ $loop->even ? 'even' : 'odd' }}">
                     <td class="c">{{ $loop->iteration }}</td>
-                    <td>{{ $loop_item->description }}</td>
+                    <td class="desc">{{ $loop_item->description }}</td>
                     <td class="c">{{ $loop_item->quantity }}{{ $loop_item->unit ? ' ' . $loop_item->unit : '' }}</td>
                     <td class="r">{{ number_format((float)$loop_item->unit_price, 2, ',', ' ') }}</td>
                     <td class="r">{{ number_format((float)$loop_item->unit_price * (1 + (float)$loop_item->tax_rate / 100), 2, ',', ' ') }}</td>

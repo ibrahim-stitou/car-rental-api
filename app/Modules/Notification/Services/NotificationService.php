@@ -168,7 +168,8 @@ class NotificationService
     {
         $unread = $user->unreadNotifications;
         return [
-            'total_unread' => $unread->count(),
+            'total'        => $user->notifications()->count(),
+            'unread'       => $unread->count(),
             'by_severity'  => [
                 'critical' => $unread->filter(fn($n) => ($n->data['severity'] ?? '') === 'critical')->count(),
                 'warning'  => $unread->filter(fn($n) => ($n->data['severity'] ?? '') === 'warning')->count(),
@@ -187,21 +188,6 @@ class NotificationService
     // ══════════════════════════════════════════
     //  RESERVATION — Notifications métier
     // ══════════════════════════════════════════
-
-    public function notifyReservationCreated(\App\Models\Reservation $reservation): void
-    {
-        $reservation->loadMissing(['vehicle', 'client', 'agency']);
-        $payload = [
-            'title'       => "Nouvelle réservation {$reservation->reservation_number}",
-            'body'        => "{$reservation->client->full_name} — {$reservation->vehicle->full_name} du {$reservation->pickup_date->format('d/m/Y')} au {$reservation->return_date->format('d/m/Y')}",
-            'entity_type' => 'reservation',
-            'entity_id'   => $reservation->id,
-            'action_url'  => "/reservations/{$reservation->id}",
-            'action_label'=> 'Voir la réservation',
-            'meta'        => ['reservation_number' => $reservation->reservation_number, 'total_amount' => $reservation->total_amount],
-        ];
-        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_CREATED, $payload, ['view-reservation']);
-    }
 
     public function notifyReservationConfirmed(\App\Models\Reservation $reservation): void
     {
@@ -230,20 +216,6 @@ class NotificationService
             'action_url'  => "/reservations/{$reservation->id}",
         ];
         $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_ACTIVATED, $payload, ['view-reservation']);
-    }
-
-    public function notifyReservationCompleted(\App\Models\Reservation $reservation): void
-    {
-        $reservation->loadMissing(['vehicle', 'client']);
-        $payload = [
-            'title'       => "Retour : réservation {$reservation->reservation_number}",
-            'body'        => "{$reservation->client->full_name} a rendu le véhicule {$reservation->vehicle->full_name}. Total : {$reservation->total_amount} DH.",
-            'entity_type' => 'reservation',
-            'entity_id'   => $reservation->id,
-            'action_url'  => "/reservations/{$reservation->id}",
-            'meta'        => ['total_amount' => $reservation->total_amount],
-        ];
-        $this->sendToAgencyByPermission($reservation->agency_id, NotificationType::RESERVATION_COMPLETED, $payload, ['view-reservation']);
     }
 
     public function notifyReservationCancelled(\App\Models\Reservation $reservation): void
