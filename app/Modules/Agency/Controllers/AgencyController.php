@@ -4,6 +4,7 @@ namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
 use App\Models\AgencyDocumentCounter;
+use App\Models\CounterTypeSetting;
 use App\Models\Expense;
 use App\Models\Reservation;
 use App\Modules\Agency\Requests\StoreAgencyRequest;
@@ -17,7 +18,9 @@ use Illuminate\Validation\Rule;
 
 class AgencyController extends BaseController
 {
-    private const COUNTER_TYPES = ['fa', 'av', 'dv', 'bc', 'bl', 'br', 'lld'];
+    // LLD isn't listed separately — it's an invoice ("une facture") and
+    // shares the 'fa' counter entirely (see BillingDocument::generateDocumentNumber()).
+    private const COUNTER_TYPES = ['fa', 'av', 'dv', 'bc', 'bl', 'br', 'reservation'];
 
     public function __construct(protected AgencyService $service)
     {
@@ -25,22 +28,29 @@ class AgencyController extends BaseController
 
     /**
      * Document numbering counters for this agency — one row per document
-     * type (FA/AV/DV/BC/BL/BR/LLD), each agency's own independent sequence.
+     * type (FA covers LLD too/AV/DV/BC/BL/BR/reservation). A type marked
+     * "shared" uses ONE sequence for every agency (reservation, by default)
+     * instead of this agency's own independent one.
      */
     public function counters(string $id): JsonResponse
     {
         $agency = $this->service->find($id);
 
-        $existing = AgencyDocumentCounter::where('agency_id', $agency->id)->get()->keyBy('document_type');
+        $perAgency = AgencyDocumentCounter::where('agency_id', $agency->id)->get()->keyBy('document_type');
+        $typeConfigs = CounterTypeSetting::whereIn('document_type', self::COUNTER_TYPES)->get()->keyBy('document_type');
 
-        $result = collect(self::COUNTER_TYPES)->map(function ($type) use ($existing) {
-            $counter = $existing->get($type);
+        $result = collect(self::COUNTER_TYPES)->map(function ($type) use ($perAgency, $typeConfigs) {
+            $config = $typeConfigs->get($type);
+            $shared = (bool) ($config->shared ?? false);
+            $source = $shared ? $config : $perAgency->get($type);
+
             return [
                 'document_type' => $type,
-                'prefix'        => $counter->prefix ?? strtoupper($type),
-                'separator'     => $counter->separator ?? '-',
-                'digits'        => $counter->digits ?? 6,
-                'current'       => $counter->current ?? 0,
+                'shared'        => $shared,
+                'prefix'        => $source->prefix ?? $config->prefix ?? strtoupper($type),
+                'separator'     => $source->separator ?? $config->separator ?? '-',
+                'digits'        => $source->digits ?? $config->digits ?? 6,
+                'current'       => $source->current ?? 0,
             ];
         })->values();
 
@@ -54,6 +64,7 @@ class AgencyController extends BaseController
         $data = $request->validate([
             'counters'                 => 'required|array',
             'counters.*.document_type' => ['required', 'string', Rule::in(self::COUNTER_TYPES)],
+            'counters.*.shared'        => 'required|boolean',
             'counters.*.prefix'        => 'required|string|max:20',
             'counters.*.separator'     => 'nullable|string|max:5',
             'counters.*.digits'        => 'required|integer|min:1|max:10',
@@ -61,21 +72,38 @@ class AgencyController extends BaseController
         ]);
 
         foreach ($data['counters'] as $row) {
-            AgencyDocumentCounter::updateOrCreate(
-                ['agency_id' => $agency->id, 'document_type' => $row['document_type']],
-                [
-                    'prefix'    => $row['prefix'],
-                    'separator' => $row['separator'] ?? '-',
-                    'digits'    => $row['digits'],
-                    'current'   => $row['current'],
-                ]
-            );
+            $shared = (bool) $row['shared'];
+
+            if ($shared) {
+                // Global for every agency — this is the one row used by nextNumber().
+                CounterTypeSetting::updateOrCreate(
+                    ['document_type' => $row['document_type']],
+                    [
+                        'shared'    => true,
+                        'prefix'    => $row['prefix'],
+                        'separator' => $row['separator'] ?? '-',
+                        'digits'    => $row['digits'],
+                        'current'   => $row['current'],
+                    ]
+                );
+            } else {
+                CounterTypeSetting::updateOrCreate(
+                    ['document_type' => $row['document_type']],
+                    ['shared' => false]
+                );
+                AgencyDocumentCounter::updateOrCreate(
+                    ['agency_id' => $agency->id, 'document_type' => $row['document_type']],
+                    [
+                        'prefix'    => $row['prefix'],
+                        'separator' => $row['separator'] ?? '-',
+                        'digits'    => $row['digits'],
+                        'current'   => $row['current'],
+                    ]
+                );
+            }
         }
 
-        $updated = AgencyDocumentCounter::where('agency_id', $agency->id)->get()->keyBy('document_type');
-        $result = collect(self::COUNTER_TYPES)->map(fn($type) => $updated->get($type))->values();
-
-        return $this->success($result, 'Compteurs mis à jour');
+        return $this->counters($id);
     }
 
     /**

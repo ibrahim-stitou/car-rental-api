@@ -76,25 +76,15 @@ class Reservation extends Model implements HasMedia, Auditable
     }
 
     // Methods
-    // Format "YY-XXXX" (ex: 26-0001), repris de l'ancien système. Les
-    // réservations migrées utilisent un format distinct ('ARCHIVE-<ancien_id>',
-    // voir migrate_legacy_data.sql) pour rester clairement identifiables comme
-    // de l'historique archivé — elles n'alimentent donc pas ce compteur.
+    // Driven by the "reservation" AgencyDocumentCounter (shared across all
+    // agencies by default, configurable per agency — see counters settings).
+    // Replaces the old hardcoded "YY-XXXX" (e.g. 26-0001) scheme; existing
+    // reservation numbers are left untouched, only new ones use this. Legacy
+    // migrated reservations use a distinct 'ARCHIVE-<ancien_id>' format (see
+    // migrate_legacy_data.sql) and never go through this method at all.
     public function generateReservationNumber(): string
     {
-        $year = now()->format('y');
-        $prefix = "{$year}-";
-
-        // Include soft-deleted rows: the unique index still holds their number,
-        // so a plain count() would collide once any reservation for the year is deleted.
-        $latestNumber = static::withTrashed()
-            ->where('reservation_number', 'like', $prefix . '%')
-            ->orderByDesc('reservation_number')
-            ->value('reservation_number');
-
-        $next = $latestNumber ? ((int) substr($latestNumber, strlen($prefix))) + 1 : 1;
-
-        return $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        return AgencyDocumentCounter::nextNumber($this->agency_id, 'reservation');
     }
 
     /**

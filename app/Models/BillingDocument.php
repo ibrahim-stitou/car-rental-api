@@ -68,9 +68,13 @@ class BillingDocument extends Model implements HasMedia, Auditable
 
     // Generate document number using this document's agency's own counter —
     // each agency is a distinct legal entity with its own gapless sequence.
+    // LLD documents are invoices too ("une facture") — they share FA's
+    // counter entirely (same prefix, same running sequence) rather than
+    // having their own separate series.
     public function generateDocumentNumber(): string
     {
-        return AgencyDocumentCounter::nextNumber($this->agency_id, strtolower($this->type));
+        $counterType = strtolower($this->type) === 'lld' ? 'fa' : strtolower($this->type);
+        return AgencyDocumentCounter::nextNumber($this->agency_id, $counterType);
     }
 
     // Calculate totals — TVA is per-line; no global discount

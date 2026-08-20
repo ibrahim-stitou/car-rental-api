@@ -30,10 +30,29 @@ class AgencyDocumentCounter extends Model
      * Atomically bumps this counter and returns the formatted next document
      * number (e.g. "FA-000002"). Locked for update so two documents from the
      * same agency approved concurrently can never be handed the same number.
+     *
+     * If this document type is marked "shared" (CounterTypeSetting), every
+     * agency draws from that ONE shared sequence instead of its own row —
+     * $agencyId is then ignored for numbering purposes (still required by
+     * the call sites, which don't otherwise know whether the type is shared).
      */
     public static function nextNumber(string $agencyId, string $type): string
     {
-        return DB::transaction(function () use ($agencyId, $type) {
+        $config = CounterTypeSetting::firstOrCreate(
+            ['document_type' => $type],
+            ['shared' => false, 'prefix' => strtoupper($type), 'separator' => '-', 'digits' => 6, 'current' => 0]
+        );
+
+        if ($config->shared) {
+            return DB::transaction(function () use ($type) {
+                $shared = CounterTypeSetting::where('document_type', $type)->lockForUpdate()->first();
+                $next = $shared->current + 1;
+                $shared->update(['current' => $next]);
+                return $shared->prefix . $shared->separator . str_pad((string) $next, $shared->digits, '0', STR_PAD_LEFT);
+            });
+        }
+
+        return DB::transaction(function () use ($agencyId, $type, $config) {
             $counter = self::where('agency_id', $agencyId)
                 ->where('document_type', $type)
                 ->lockForUpdate()
@@ -43,9 +62,9 @@ class AgencyDocumentCounter extends Model
                 $counter = self::create([
                     'agency_id'     => $agencyId,
                     'document_type' => $type,
-                    'prefix'        => strtoupper($type),
-                    'separator'     => '-',
-                    'digits'        => 6,
+                    'prefix'        => $config->prefix,
+                    'separator'     => $config->separator,
+                    'digits'        => $config->digits,
                     'current'       => 0,
                 ]);
             }
