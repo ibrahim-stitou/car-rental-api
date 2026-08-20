@@ -83,49 +83,11 @@ class SettingsSeeder extends Seeder
             ['group' => 'website', 'key' => 'primary_color',       'type' => 'string',  'label' => 'Couleur principale',         'value' => '#1e3a5f'],
             ['group' => 'website', 'key' => 'booking_enabled',     'type' => 'boolean', 'label' => 'Activer réservations en ligne', 'value' => 'true'],
             ['group' => 'website', 'key' => 'show_prices',         'type' => 'boolean', 'label' => 'Afficher les prix sur le site',  'value' => 'true'],
-
-            // ─── Compteurs de séquence (configuration individuelle par type) ──────
-            // Facture (FA)
-            ['group' => 'counters', 'key' => 'fa_prefix',    'type' => 'string',  'label' => 'FA · Préfixe',      'value' => 'FA'],
-            ['group' => 'counters', 'key' => 'fa_separator', 'type' => 'string',  'label' => 'FA · Séparateur',   'value' => '-'],
-            ['group' => 'counters', 'key' => 'fa_digits',    'type' => 'integer', 'label' => 'FA · Chiffres',     'value' => '6'],
-            ['group' => 'counters', 'key' => 'fa_current',   'type' => 'integer', 'label' => 'FA · Compteur',     'value' => '0'],
-            // Avoir (AV)
-            ['group' => 'counters', 'key' => 'av_prefix',    'type' => 'string',  'label' => 'AV · Préfixe',      'value' => 'AV'],
-            ['group' => 'counters', 'key' => 'av_separator', 'type' => 'string',  'label' => 'AV · Séparateur',   'value' => '-'],
-            ['group' => 'counters', 'key' => 'av_digits',    'type' => 'integer', 'label' => 'AV · Chiffres',     'value' => '6'],
-            ['group' => 'counters', 'key' => 'av_current',   'type' => 'integer', 'label' => 'AV · Compteur',     'value' => '0'],
-            // Devis (DV)
-            ['group' => 'counters', 'key' => 'dv_prefix',    'type' => 'string',  'label' => 'DV · Préfixe',      'value' => 'DV'],
-            ['group' => 'counters', 'key' => 'dv_separator', 'type' => 'string',  'label' => 'DV · Séparateur',   'value' => '-'],
-            ['group' => 'counters', 'key' => 'dv_digits',    'type' => 'integer', 'label' => 'DV · Chiffres',     'value' => '6'],
-            ['group' => 'counters', 'key' => 'dv_current',   'type' => 'integer', 'label' => 'DV · Compteur',     'value' => '0'],
-            // Bon de Commande (BC)
-            ['group' => 'counters', 'key' => 'bc_prefix',    'type' => 'string',  'label' => 'BC · Préfixe',      'value' => 'BC'],
-            ['group' => 'counters', 'key' => 'bc_separator', 'type' => 'string',  'label' => 'BC · Séparateur',   'value' => '-'],
-            ['group' => 'counters', 'key' => 'bc_digits',    'type' => 'integer', 'label' => 'BC · Chiffres',     'value' => '6'],
-            ['group' => 'counters', 'key' => 'bc_current',   'type' => 'integer', 'label' => 'BC · Compteur',     'value' => '0'],
-            // Bon de Livraison (BL)
-            ['group' => 'counters', 'key' => 'bl_prefix',    'type' => 'string',  'label' => 'BL · Préfixe',      'value' => 'BL'],
-            ['group' => 'counters', 'key' => 'bl_separator', 'type' => 'string',  'label' => 'BL · Séparateur',   'value' => '-'],
-            ['group' => 'counters', 'key' => 'bl_digits',    'type' => 'integer', 'label' => 'BL · Chiffres',     'value' => '6'],
-            ['group' => 'counters', 'key' => 'bl_current',   'type' => 'integer', 'label' => 'BL · Compteur',     'value' => '0'],
-            // Bon de Réception (BR)
-            ['group' => 'counters', 'key' => 'br_prefix',    'type' => 'string',  'label' => 'BR · Préfixe',      'value' => 'BR'],
-            ['group' => 'counters', 'key' => 'br_separator', 'type' => 'string',  'label' => 'BR · Séparateur',   'value' => '-'],
-            ['group' => 'counters', 'key' => 'br_digits',    'type' => 'integer', 'label' => 'BR · Chiffres',     'value' => '6'],
-            ['group' => 'counters', 'key' => 'br_current',   'type' => 'integer', 'label' => 'BR · Compteur',     'value' => '0'],
-            // Facture LLD
-            ['group' => 'counters', 'key' => 'lld_prefix',    'type' => 'string',  'label' => 'LLD · Préfixe',     'value' => 'LLD'],
-            ['group' => 'counters', 'key' => 'lld_separator', 'type' => 'string',  'label' => 'LLD · Séparateur',  'value' => '-'],
-            ['group' => 'counters', 'key' => 'lld_digits',    'type' => 'integer', 'label' => 'LLD · Chiffres',    'value' => '6'],
-            ['group' => 'counters', 'key' => 'lld_current',   'type' => 'integer', 'label' => 'LLD · Compteur',    'value' => '0'],
-            // Réservation
-            ['group' => 'counters', 'key' => 'reservation_prefix',    'type' => 'string',  'label' => 'RES · Préfixe',    'value' => 'RES'],
-            ['group' => 'counters', 'key' => 'reservation_separator', 'type' => 'string',  'label' => 'RES · Séparateur', 'value' => '-'],
-            ['group' => 'counters', 'key' => 'reservation_digits',    'type' => 'integer', 'label' => 'RES · Chiffres',   'value' => '6'],
-            ['group' => 'counters', 'key' => 'reservation_current',   'type' => 'integer', 'label' => 'RES · Compteur',   'value' => '0'],
         ];
+
+        // Document numbering counters are per-agency now (agency_document_counters
+        // table, seeded per agency at creation time) — no longer a global
+        // 'counters' Settings group.
 
         foreach ($settings as $setting) {
             Setting::updateOrCreate(
@@ -134,9 +96,7 @@ class SettingsSeeder extends Seeder
             );
         }
 
-        // Clean up obsolete global counter keys
-        Setting::where('group', 'counters')
-            ->whereIn('key', ['separator', 'include_year', 'digits'])
-            ->delete();
+        // Retired: numbering counters are per-agency now (agency_document_counters).
+        Setting::where('group', 'counters')->delete();
     }
 }

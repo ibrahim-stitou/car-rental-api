@@ -4,9 +4,7 @@ namespace App\Models;
 
 use App\Core\Traits\HasUuid;
 use App\Core\Traits\HasMediaCollections;
-use App\Models\Setting;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,24 +66,11 @@ class BillingDocument extends Model implements HasMedia, Auditable
         return str_starts_with($this->document_number ?? '', 'BROUILLON-');
     }
 
-    // Generate document number using per-type configurable counters
+    // Generate document number using this document's agency's own counter —
+    // each agency is a distinct legal entity with its own gapless sequence.
     public function generateDocumentNumber(): string
     {
-        $type    = strtolower($this->type); // fa, av, dv, bc, bl, br
-        $prefix  = Setting::get('counters', $type . '_prefix',    $this->type);
-        $sep     = Setting::get('counters', $type . '_separator', '-');
-        $digits  = (int) Setting::get('counters', $type . '_digits',  6);
-        $current = (int) Setting::get('counters', $type . '_current', 0);
-
-        $next = $current + 1;
-
-        Setting::where('group', 'counters')
-            ->where('key', $type . '_current')
-            ->update(['value' => $next]);
-
-        Cache::forget('app_settings');
-
-        return $prefix . $sep . str_pad($next, $digits, '0', STR_PAD_LEFT);
+        return AgencyDocumentCounter::nextNumber($this->agency_id, strtolower($this->type));
     }
 
     // Calculate totals — TVA is per-line; no global discount

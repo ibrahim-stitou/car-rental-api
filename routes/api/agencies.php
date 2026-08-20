@@ -16,4 +16,6 @@ Route::middleware('auth:api')->prefix('agencies')->group(function () {
     Route::get('/{id}/statistics',         [AgencyController::class, 'statistics'])->middleware('permission:view-agency');
     Route::get('/{id}/credits',            [AgencyController::class, 'credits'])->middleware('permission:view-agency');
     Route::post('/{id}/restore',           [AgencyController::class, 'restore'])->middleware('permission:edit-agency');
+    Route::get('/{id}/counters',           [AgencyController::class, 'counters'])->middleware('permission:view-agency');
+    Route::put('/{id}/counters',           [AgencyController::class, 'updateCounters'])->middleware('permission:edit-agency');
 });

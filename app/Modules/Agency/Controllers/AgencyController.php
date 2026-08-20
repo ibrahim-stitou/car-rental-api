@@ -3,6 +3,7 @@
 namespace App\Modules\Agency\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
+use App\Models\AgencyDocumentCounter;
 use App\Models\Expense;
 use App\Models\Reservation;
 use App\Modules\Agency\Requests\StoreAgencyRequest;
@@ -12,11 +13,69 @@ use App\Modules\Agency\Services\AgencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AgencyController extends BaseController
 {
+    private const COUNTER_TYPES = ['fa', 'av', 'dv', 'bc', 'bl', 'br', 'lld'];
+
     public function __construct(protected AgencyService $service)
     {
+    }
+
+    /**
+     * Document numbering counters for this agency — one row per document
+     * type (FA/AV/DV/BC/BL/BR/LLD), each agency's own independent sequence.
+     */
+    public function counters(string $id): JsonResponse
+    {
+        $agency = $this->service->find($id);
+
+        $existing = AgencyDocumentCounter::where('agency_id', $agency->id)->get()->keyBy('document_type');
+
+        $result = collect(self::COUNTER_TYPES)->map(function ($type) use ($existing) {
+            $counter = $existing->get($type);
+            return [
+                'document_type' => $type,
+                'prefix'        => $counter->prefix ?? strtoupper($type),
+                'separator'     => $counter->separator ?? '-',
+                'digits'        => $counter->digits ?? 6,
+                'current'       => $counter->current ?? 0,
+            ];
+        })->values();
+
+        return $this->success($result);
+    }
+
+    public function updateCounters(Request $request, string $id): JsonResponse
+    {
+        $agency = $this->service->find($id);
+
+        $data = $request->validate([
+            'counters'                 => 'required|array',
+            'counters.*.document_type' => ['required', 'string', Rule::in(self::COUNTER_TYPES)],
+            'counters.*.prefix'        => 'required|string|max:20',
+            'counters.*.separator'     => 'nullable|string|max:5',
+            'counters.*.digits'        => 'required|integer|min:1|max:10',
+            'counters.*.current'       => 'required|integer|min:0',
+        ]);
+
+        foreach ($data['counters'] as $row) {
+            AgencyDocumentCounter::updateOrCreate(
+                ['agency_id' => $agency->id, 'document_type' => $row['document_type']],
+                [
+                    'prefix'    => $row['prefix'],
+                    'separator' => $row['separator'] ?? '-',
+                    'digits'    => $row['digits'],
+                    'current'   => $row['current'],
+                ]
+            );
+        }
+
+        $updated = AgencyDocumentCounter::where('agency_id', $agency->id)->get()->keyBy('document_type');
+        $result = collect(self::COUNTER_TYPES)->map(fn($type) => $updated->get($type))->values();
+
+        return $this->success($result, 'Compteurs mis à jour');
     }
 
     /**
