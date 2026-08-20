@@ -335,8 +335,13 @@
 
                             @php
                                 $conditionFr = ['bon_etat' => 'Bon état', 'leger_dommage' => 'Léger dommage', 'accidente' => 'Accidenté', 'hors_service' => 'Hors service'];
-                                $conditionAr = ['bon_etat' => 'حالة جيدة', 'leger_dommage' => 'ضرر طفيف', 'accidente' => 'حادث', 'hors_service' => 'خارج الخدمة'];
                             @endphp
+                            {{-- État folded into the Matricule/Carburant row (not its own <tr>) —
+                                 page 1 sits in a fixed-height frame (see .page-frame above); an
+                                 extra bordered row here was tipping some contracts onto a
+                                 spurious 3rd page (page 2 nearly blank, conditions pushed to
+                                 page 3). An inline line inside an existing cell costs ~1 text
+                                 line instead of a whole padded+bordered row. --}}
                             <table class="veh-two-table">
                                 <tr>
                                     <td>Marque : <b>{{ $vehicle?->brand ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('علامة') }}</span></td>
@@ -344,10 +349,11 @@
                                 </tr>
                                 <tr>
                                     <td>Matricule : <b>{{ $vehicle?->registration_number ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('رقم اللوحة') }}</span></td>
-                                    <td>Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('وقود') }}</span></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="2">État : <b>{{ $conditionFr[$vehicle?->condition] ?? '—' }}</b><br><span class="ar-sub ar">{{ \App\Services\PdfService::ar($conditionAr[$vehicle?->condition] ?? 'حالة السيارة') }}</span></td>
+                                    <td>
+                                        Carburant : <b>{{ ucfirst(str_replace('_', ' ', $vehicle?->fuel_type ?? '—')) }}</b>
+                                        — État : <b>{{ $conditionFr[$vehicle?->condition] ?? '—' }}</b>
+                                        <br><span class="ar-sub ar">{{ \App\Services\PdfService::ar('وقود') }}</span>
+                                    </td>
                                 </tr>
                             </table>
 
