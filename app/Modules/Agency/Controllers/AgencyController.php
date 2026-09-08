@@ -387,11 +387,18 @@ class AgencyController extends BaseController
                 'id'                 => $row->id,
                 'reservation_number' => $row->reservation_number,
                 'status'             => $reservation?->status,
+                'rental_unit'        => $row->rental_unit,
                 'pickup_date'        => $reservation?->pickup_date,
                 'return_date'        => $reservation?->return_date,
                 'client'             => $reservation?->client,
                 'vehicle'            => $reservation?->vehicle,
                 'total_amount'       => (float) $row->total_amount,
+                // LLD only — null for day/hour rentals.
+                'monthly_rate'       => $row->monthly_rate !== null ? (float) $row->monthly_rate : null,
+                'total_months'       => $row->total_months !== null ? (int) $row->total_months : null,
+                'months_due'         => $reservation?->months_due ?: null,
+                // What's actually owed to date (= total_amount for day/hour).
+                'amount_due_so_far'  => (float) $row->due_so_far,
                 'paid_amount'        => (float) $row->paid_amount,
                 'credit_amount'      => (float) $row->credit_amount,
             ];
@@ -401,15 +408,26 @@ class AgencyController extends BaseController
     }
 
     /**
-     * Reservations (of the given agency-scoped query) whose paid amount is
-     * still short of their total — the sole source of client credit.
+     * Reservations (of the given agency-scoped query) still owing money as of
+     * today — the sole source of client credit. LLD contracts count only the
+     * months due so far, never the whole multi-year value (see
+     * Reservation::amountDueSoFarSql()), so a 58-month / 464 000 MAD contract
+     * signed last month shows an 8 000-16 000 MAD credit, not 464 000.
      */
     private function creditReservationsQuery($reservationsQuery)
     {
         return (clone $reservationsQuery)->whereIn('status', ['completed', 'active'])
-            ->selectRaw('reservations.id, reservation_number, total_amount, COALESCE(SUM(rp.amount),0) as paid_amount, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+            ->selectRaw(
+                'reservations.id, reservation_number, reservations.rental_unit, '
+                . 'reservations.total_amount, reservations.monthly_rate, reservations.total_months, '
+                . 'COALESCE(SUM(rp.amount),0) as paid_amount, '
+                // Aliased away from `amount_due_so_far`: that name has a model
+                // accessor that would shadow this raw column on read.
+                . Reservation::amountDueSoFarSql() . ' as due_so_far, '
+                . Reservation::creditAmountSql() . ' as credit_amount'
+            )
             ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
-            ->groupBy('reservations.id', 'reservation_number', 'total_amount')
+            ->groupBy('reservations.id')
             ->havingRaw('credit_amount > 0')
             ->get();
     }

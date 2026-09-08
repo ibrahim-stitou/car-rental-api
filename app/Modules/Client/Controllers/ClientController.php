@@ -4,6 +4,7 @@ namespace App\Modules\Client\Controllers;
 
 use App\Core\Http\Controllers\BaseController;
 use App\Models\Claim;
+use App\Models\Reservation;
 use App\Modules\Client\Requests\StoreClientRequest;
 use App\Modules\Client\Requests\UpdateClientRequest;
 use App\Modules\Client\Resources\ClientResource;
@@ -276,14 +277,40 @@ class ClientController extends BaseController
         $totalPaid   = (float) $client->reservations()
             ->join('reservation_payments', 'reservations.id', '=', 'reservation_payments.reservation_id')
             ->sum('reservation_payments.amount');
-        $creditBalance = max(0.0, $totalAmount - $totalPaid);
 
-        $creditReservations = (clone $rq)->whereIn('status', ['completed', 'active'])
-            ->selectRaw('reservations.id, reservation_number, total_amount, COALESCE(SUM(rp.amount),0) as paid_amount, total_amount - COALESCE(SUM(rp.amount),0) as credit_amount')
+        // Outstanding credit counts only what's owed as of today: for an LLD
+        // contract that's the months due so far (first month at signing, +1
+        // per whole month elapsed, capped at the contract length), NOT the
+        // full multi-year value — see Reservation::amountDueSoFarSql().
+        $creditRows = (clone $rq)->whereIn('status', ['completed', 'active'])
+            ->selectRaw(
+                'reservations.id, reservation_number, reservations.rental_unit, reservations.pickup_date, '
+                . 'reservations.total_amount, reservations.monthly_rate, reservations.total_months, '
+                . 'COALESCE(SUM(rp.amount),0) as paid_amount, '
+                // Aliased away from `amount_due_so_far`: that name has a model
+                // accessor that would shadow this raw column on read.
+                . Reservation::amountDueSoFarSql() . ' as due_so_far, '
+                . Reservation::creditAmountSql() . ' as credit_amount'
+            )
             ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
-            ->groupBy('reservations.id', 'reservation_number', 'total_amount')
+            ->groupBy('reservations.id')
             ->havingRaw('credit_amount > 0')
             ->get();
+
+        $creditReservations = $creditRows->map(fn ($r) => [
+            'id'                 => $r->id,
+            'reservation_number' => $r->reservation_number,
+            'rental_unit'        => $r->rental_unit,
+            'total_amount'       => (float) $r->total_amount,
+            'monthly_rate'       => $r->monthly_rate !== null ? (float) $r->monthly_rate : null,
+            'total_months'       => $r->total_months !== null ? (int) $r->total_months : null,
+            'months_due'         => $r->months_due ?: null,
+            'amount_due_so_far'  => (float) $r->due_so_far,
+            'paid_amount'        => (float) $r->paid_amount,
+            'credit_amount'      => (float) $r->credit_amount,
+        ])->sortByDesc('credit_amount')->values();
+
+        $creditBalance = (float) $creditReservations->sum('credit_amount');
 
         $lastReservation = (clone $rq)->with('vehicle:id,brand,model,registration_number')->latest()->first();
 

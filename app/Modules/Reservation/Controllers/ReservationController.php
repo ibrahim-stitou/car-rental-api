@@ -610,11 +610,6 @@ class ReservationController extends BaseController
         // whole month elapsed since, capped at the contract length; mirrors
         // Reservation::getAmountDueSoFarAttribute()). A 24-month, 96 000 MAD
         // contract must show a 4 000 MAD credit at signing, not 96 000.
-        $amountBasis = "CASE WHEN reservations.rental_unit = 'month'
-            THEN LEAST(reservations.total_amount, reservations.monthly_rate * LEAST(reservations.total_months, 1 + TIMESTAMPDIFF(MONTH, reservations.pickup_date, NOW())))
-            ELSE reservations.total_amount
-        END";
-
         $credits = \App\Models\Reservation::query()
             // Migrated reservations are a pure historical archive (forced to
             // completed/paid regardless of their real original status) and
@@ -622,7 +617,7 @@ class ReservationController extends BaseController
             ->whereNull('legacy_id')
             ->whereIn('status', ['completed', 'active'])
             ->when($agencyId, fn($q) => $q->where('agency_id', $agencyId))
-            ->selectRaw("reservations.*, {$amountBasis} - COALESCE(SUM(rp.amount),0) as credit_amount")
+            ->selectRaw('reservations.*, ' . \App\Models\Reservation::creditAmountSql() . ' as credit_amount')
             ->leftJoin('reservation_payments as rp', 'reservations.id', '=', 'rp.reservation_id')
             ->groupBy('reservations.id')
             ->havingRaw('credit_amount > 0')

@@ -237,6 +237,36 @@ class Reservation extends Model implements HasMedia, Auditable
     }
 
     /**
+     * SQL counterpart of getAmountDueSoFarAttribute(), for aggregate queries
+     * (credit KPIs / credit lists) where hydrating every model would be
+     * wasteful. MUST stay in sync with that accessor and with
+     * getMonthsDueAttribute(): an LLD contract (rental_unit = 'month') owes
+     * monthly_rate x months due so far — first month at signing, +1 per whole
+     * calendar month elapsed since pickup, capped at total_months — never the
+     * full multi-year contract value up front. Everything else owes its full
+     * total_amount. Assumes the reservations table is queried under its real
+     * name (not aliased). GREATEST(1, ...) mirrors the accessor's "first month
+     * due immediately" floor even when pickup_date is still in the future.
+     */
+    public static function amountDueSoFarSql(): string
+    {
+        return "CASE WHEN reservations.rental_unit = 'month'
+            THEN LEAST(reservations.total_amount, reservations.monthly_rate * LEAST(reservations.total_months, GREATEST(1, 1 + TIMESTAMPDIFF(MONTH, reservations.pickup_date, NOW()))))
+            ELSE reservations.total_amount
+        END";
+    }
+
+    /**
+     * SQL expression for outstanding client credit on a reservation: amount
+     * due so far (see amountDueSoFarSql()) minus payments received. Expects
+     * the payments table joined as `rp` and the query grouped by reservation.
+     */
+    public static function creditAmountSql(): string
+    {
+        return self::amountDueSoFarSql() . ' - COALESCE(SUM(rp.amount), 0)';
+    }
+
+    /**
      * Recompute payment_status (pending|partial|paid) from the sum of recorded
      * payments vs. the current total_amount. Single source of truth so it can't
      * drift from the payments table — called whenever a payment or the total changes.
