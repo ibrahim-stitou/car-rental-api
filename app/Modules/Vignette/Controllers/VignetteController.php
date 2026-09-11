@@ -25,7 +25,7 @@ class VignetteController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['vehicle_id', 'is_paid', 'year']);
+        $filters = $request->only(['vehicle_id', 'is_paid', 'year','vehicule']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, VignetteResource::class);
     }

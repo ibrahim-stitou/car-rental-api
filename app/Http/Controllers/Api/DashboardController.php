@@ -144,30 +144,69 @@ class DashboardController extends BaseController
 
     private function expiringStats(?string $agencyId): array
     {
-        $vehicleScope = fn($q) => $q->when($agencyId, fn($q) => $q->where('agency_id', $agencyId));
+        $today = today();
+        $limitDate = today()->addDays(30);
+
+        $vehicleScope = fn ($q) => $q->when(
+            $agencyId,
+            fn ($q) => $q->where('agency_id', $agencyId)
+        );
 
         $insurances = Insurance::query()
-            ->when($agencyId, fn($q) => $q->whereHas('vehicle', $vehicleScope))
-            ->whereBetween('end_date', [now(), now()->addDays(30)])
+            ->whereHas('vehicle', $vehicleScope)
+            ->whereDate('end_date', '>', $today)
+            ->whereDate('end_date', '<=', $limitDate)
+            ->whereNotExists(function ($subQuery) {
+                $subQuery->selectRaw('1')
+                    ->from('insurances as i2')
+                    ->whereColumn('i2.vehicle_id', 'insurances.vehicle_id')
+                    ->whereColumn('i2.end_date', '>', 'insurances.end_date');
+            })
             ->count();
 
         $inspections = TechnicalInspection::query()
-            ->when($agencyId, fn($q) => $q->whereHas('vehicle', $vehicleScope))
-            ->whereBetween('next_inspection_date', [now(), now()->addDays(30)])
+            ->whereHas('vehicle', $vehicleScope)
+            ->where('result', 'passed')
+            ->whereDate('expiry_date', '>', $today)
+            ->whereDate('expiry_date', '<=', $limitDate)
+            ->whereNotExists(function ($subQuery) {
+                $subQuery->selectRaw('1')
+                    ->from('technical_inspections as ti2')
+                    ->whereColumn('ti2.vehicle_id', 'technical_inspections.vehicle_id')
+                    ->where('ti2.result', 'passed')
+                    ->whereColumn(
+                        'ti2.expiry_date',
+                        '>',
+                        'technical_inspections.expiry_date'
+                    );
+            })
             ->count();
 
         $vignettes = Vignette::query()
-            ->when($agencyId, fn($q) => $q->whereHas('vehicle', $vehicleScope))
-            ->whereBetween('expiry_date', [now(), now()->addDays(30)])
+            ->whereHas('vehicle', $vehicleScope)
+            ->whereDate('expiry_date', '>', $today)
+            ->whereDate('expiry_date', '<=', $limitDate)
+            ->whereNotExists(function ($subQuery) {
+                $subQuery->selectRaw('1')
+                    ->from('vignettes as v2')
+                    ->whereColumn('v2.vehicle_id', 'vignettes.vehicle_id')
+                    ->whereColumn('v2.expiry_date', '>', 'vignettes.expiry_date');
+            })
             ->count();
 
         $maintenances = Maintenance::query()
-            ->when($agencyId, fn($q) => $q->whereHas('vehicle', $vehicleScope))
+            ->whereHas('vehicle', $vehicleScope)
             ->where('status', 'scheduled')
-            ->whereBetween('maintenance_date', [now(), now()->addDays(30)])
+            ->whereDate('maintenance_date', '>', $today)
+            ->whereDate('maintenance_date', '<=', $limitDate)
             ->count();
 
-        return compact('insurances', 'inspections', 'vignettes', 'maintenances');
+        return compact(
+            'insurances',
+            'inspections',
+            'vignettes',
+            'maintenances'
+        );
     }
 
     private function monthlyRevenue(?string $agencyId): array

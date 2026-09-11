@@ -25,7 +25,7 @@ class InsuranceController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['vehicle_id', 'type', 'is_active']);
+        $filters = $request->only(['vehicle_id', 'type', 'is_active','vehicule']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, InsuranceResource::class);
     }

@@ -27,7 +27,7 @@ class TechnicalInspectionController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['vehicle_id', 'result']);
+        $filters = $request->only(['vehicle_id', 'result','vehicule']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, TechnicalInspectionResource::class);
     }

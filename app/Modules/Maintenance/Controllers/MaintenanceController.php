@@ -25,7 +25,7 @@ class MaintenanceController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['vehicle_id', 'status', 'priority', 'type']);
+        $filters = $request->only(['vehicle_id', 'status', 'priority', 'type','vehicule']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, MaintenanceResource::class);
     }

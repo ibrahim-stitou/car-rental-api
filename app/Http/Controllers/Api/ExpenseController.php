@@ -14,12 +14,37 @@ class ExpenseController extends BaseController
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Expense::with(['agency:id,name', 'vehicle:id,brand,model,registration_number'])
-            ->when($request->agency_id, fn($q) => $q->where('agency_id', $request->agency_id))
-            ->when($request->vehicle_id, fn($q) => $q->where('vehicle_id', $request->vehicle_id))
-            ->when($request->category, fn($q) => $q->where('category', $request->category))
-            ->when($request->search, fn($q) => $q->where('title', 'like', "%{$request->search}%"))
-            ->orderByDesc('expense_date');
+        $query = Expense::with([
+            'agency:id,name',
+            'vehicle:id,brand,model,registration_number'
+        ])
+            ->when(
+                $request->agency_id,
+                fn($q) => $q->where('agency_id', $request->agency_id)
+            )
+            ->when(
+                $request->vehicle_id,
+                fn($q) => $q->where('vehicle_id', $request->vehicle_id)
+            )
+            ->when(
+                $request->vehicle_registration_number,
+                fn($q) => $q->whereHas('vehicle', function ($vehicleQuery) use ($request) {
+                    $vehicleQuery->where(
+                        'registration_number',
+                        'like',
+                        '%' . $request->vehicle_registration_number . '%'
+                    );
+                })
+            )
+            ->when(
+                $request->category,
+                fn($q) => $q->where('category', $request->category)
+            )
+            ->when(
+                $request->search,
+                fn($q) => $q->where('title', 'like', "%{$request->search}%")
+            )
+            ->orderByDesc('created_at');
 
         $perPage = (int) ($request->per_page ?? 15);
         $paginated = $query->paginate($perPage);
