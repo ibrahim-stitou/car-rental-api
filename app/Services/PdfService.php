@@ -83,7 +83,11 @@ class PdfService
     }
 
     /**
-     * LLD (rental_unit = 'month') contracts use a dedicated template
+     * A dedicated template is used for corporate clients (personnes morales):
+     * a "ordre de prélèvement automatique" mandate document with the vehicle
+     * information and mileage, and no driver section at all.
+     *
+     * LLD (rental_unit = 'month') contracts otherwise use a dedicated template
      * (resources/views/pdf/contract-lld.blade.php) — kept as a separate file
      * rather than branched inside pdf.contract so its layout/wording can
      * evolve independently for long-term leases without touching the
@@ -91,6 +95,12 @@ class PdfService
      */
     private function contractView(Reservation $reservation): string
     {
+        $reservation->loadMissing('client');
+
+        if ($reservation->client?->client_type === 'moral') {
+            return 'pdf.contract-lld-corporate';
+        }
+
         return $reservation->rental_unit === 'month' ? 'pdf.contract-lld' : 'pdf.contract';
     }
 
@@ -180,9 +190,25 @@ class PdfService
         // glyphs, rendering as "?").
         File::ensureDirectoryExists(storage_path('fonts'));
 
+        // Bank/fiscal details for the "account to be credited" (the lessor /
+        // agency owner) now live on the agency itself — each agency is its own
+        // legal entity with its own banking. Fall back to the legacy global
+        // "company" settings row when the agency has none.
+        $company       = Setting::where('group', 'company')->pluck('value', 'key')->toArray();
+        $agency        = $reservation->agency;
+        $company['name']          = $agency?->name ?? $company['name'] ?? config('app.name');
+        $company['address']       = $agency?->address ?? $company['address'] ?? null;
+        $company['city']          = $agency?->city ?? $company['city'] ?? null;
+        $company['country']       = $agency?->country ?? $company['country'] ?? null;
+        $company['bank_name']     = $agency?->bank_name ?? $company['bank_name'] ?? null;
+        $company['bank_branch']   = $agency?->bank_branch ?? $company['bank_branch'] ?? null;
+        $company['bank_address']  = $agency?->bank_address ?? $company['bank_address'] ?? null;
+        $company['bank_account']  = $agency?->bank_account ?? $company['bank_account'] ?? null;
+        $company['bank_rib']      = $agency?->bank_rib ?? $company['bank_rib'] ?? null;
+
         return [
             'reservation'      => $reservation,
-            'company'          => Setting::where('group', 'company')->pluck('value', 'key')->toArray(),
+            'company'          => $company,
             'logoDataUrl'      => $logoDataUrl,
             'signatureDataUrl' => $signatureDataUrl,
             'stampDataUrl'     => $stampDataUrl,

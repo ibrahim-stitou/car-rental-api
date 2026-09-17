@@ -25,6 +25,11 @@ class AgencyResource extends JsonResource
             'tax_id'     => $this->tax_id,
             'patente'    => $this->patente,
             'ice'        => $this->ice,
+            'bank_name'      => $this->bank_name,
+            'bank_branch'    => $this->bank_branch,
+            'bank_address'   => $this->bank_address,
+            'bank_account'   => $this->bank_account,
+            'bank_rib'       => $this->bank_rib,
             'manager'    => $this->whenLoaded('manager', fn() => [
                 'id'        => $this->manager->id,
                 'full_name' => $this->manager->full_name,

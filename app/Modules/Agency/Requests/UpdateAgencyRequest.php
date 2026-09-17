@@ -26,6 +26,11 @@ class UpdateAgencyRequest extends FormRequest
             'tax_id'     => 'nullable|string|max:255',
             'patente'    => 'nullable|string|max:255',
             'ice'        => 'nullable|string|max:255',
+            'bank_name'      => 'nullable|string|max:255',
+            'bank_branch'    => 'nullable|string|max:255',
+            'bank_address'   => 'nullable|string',
+            'bank_account'   => 'nullable|string|max:255',
+            'bank_rib'       => 'nullable|string|max:255',
         ];
     }
 }

@@ -33,6 +33,8 @@ class SettingsSeeder extends Seeder
             ['group' => 'company', 'key' => 'company_type',   'type' => 'string',  'label' => 'Forme juridique',            'value' => ''],
             // Banque
             ['group' => 'company', 'key' => 'bank_name',      'type' => 'string',  'label' => 'Nom de la banque',           'value' => ''],
+            ['group' => 'company', 'key' => 'bank_branch',    'type' => 'string',  'label' => 'Agence / Centre d\'affaires', 'value' => ''],
+            ['group' => 'company', 'key' => 'bank_address',   'type' => 'string',  'label' => 'Adresse de la banque',       'value' => ''],
             ['group' => 'company', 'key' => 'bank_account',   'type' => 'string',  'label' => 'Numéro de compte',           'value' => ''],
             ['group' => 'company', 'key' => 'bank_rib',       'type' => 'string',  'label' => 'RIB',                        'value' => ''],
             ['group' => 'company', 'key' => 'bank_swift',     'type' => 'string',  'label' => 'Code SWIFT',                 'value' => ''],

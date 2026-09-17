@@ -25,6 +25,7 @@ class Agency extends Model implements HasMedia, Auditable
         'name', 'address', 'city', 'country', 'phone', 'phone2',
         'email', 'is_active', 'manager_id',
         'legal_form', 'capital', 'rc', 'tax_id', 'patente', 'ice',
+        'bank_name', 'bank_branch', 'bank_address', 'bank_account', 'bank_rib',
     ];
 
     protected $auditExclude = ['updated_at'];

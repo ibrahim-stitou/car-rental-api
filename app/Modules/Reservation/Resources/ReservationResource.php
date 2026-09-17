@@ -45,7 +45,10 @@ class ReservationResource extends JsonResource
                 'registration_number' => $this->vehicle->registration_number,
             ]),
             'client'              => $this->whenLoaded('client', fn() => [
-                'id' => $this->client->id, 'full_name' => $this->client->full_name,
+                'id' => $this->client->id,
+                'full_name' => $this->client->full_name,
+                'client_type' => $this->client->client_type,
+                'company_name' => $this->client->company_name,
                 'phone' => $this->client->phone,
             ]),
             'pickup_date'         => $this->pickup_date?->toISOString(),

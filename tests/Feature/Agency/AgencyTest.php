@@ -191,6 +191,80 @@ class AgencyTest extends TestCase
         $response->assertStatus(201);
     }
 
+    public function test_create_agency_with_bank_details(): void
+    {
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->postJson('/api/v1/agencies', [
+            'name'          => 'Agence Banque',
+            'email'         => 'banque@ges-cars.ma',
+            'bank_name'     => 'Attijariwafa Bank',
+            'bank_branch'   => 'Casablanca — Anfa',
+            'bank_address'  => '12 Boulevard Anfa',
+            'bank_account'  => '0017800000000000000000',
+            'bank_rib'      => 'MA64 0017 8000 0000 0000 0000',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('agencies', [
+            'email'        => 'banque@ges-cars.ma',
+            'bank_name'    => 'Attijariwafa Bank',
+            'bank_branch'  => 'Casablanca — Anfa',
+            'bank_address' => '12 Boulevard Anfa',
+            'bank_account' => '0017800000000000000000',
+            'bank_rib'     => 'MA64 0017 8000 0000 0000 0000',
+        ]);
+    }
+
+    public function test_update_agency_bank_details(): void
+    {
+        $agency = Agency::factory()->create();
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->putJson("/api/v1/agencies/{$agency->id}", [
+            'bank_name'   => 'CIH Bank',
+            'bank_branch' => 'Rabat — Agdal',
+            'bank_address' => '5 Avenue Agdal',
+            'bank_account' => '0050000000000000000001',
+            'bank_rib'     => 'MA64 0050 0000 0000 0000 0001',
+        ]);
+
+        $response->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('agencies', [
+            'id'           => $agency->id,
+            'bank_name'    => 'CIH Bank',
+            'bank_branch'  => 'Rabat — Agdal',
+            'bank_address' => '5 Avenue Agdal',
+            'bank_account' => '0050000000000000000001',
+            'bank_rib'     => 'MA64 0050 0000 0000 0000 0001',
+        ]);
+    }
+
+    public function test_show_agency_returns_bank_details(): void
+    {
+        $agency = Agency::factory()->create([
+            'bank_name'    => 'Banque Populaire',
+            'bank_branch'  => 'Marrakech — Guéliz',
+            'bank_address' => '100 Avenue Mohammed V',
+            'bank_account' => '0070000000000000000001',
+            'bank_rib'     => 'MA64 0070 0000 0000 0000 0001',
+        ]);
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->getJson("/api/v1/agencies/{$agency->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('data.bank_name', 'Banque Populaire')
+            ->assertJsonPath('data.bank_branch', 'Marrakech — Guéliz')
+            ->assertJsonPath('data.bank_address', '100 Avenue Mohammed V')
+            ->assertJsonPath('data.bank_account', '0070000000000000000001')
+            ->assertJsonPath('data.bank_rib', 'MA64 0070 0000 0000 0000 0001');
+    }
+
     // ─── SHOW ─────────────────────────────────────────────────────────
 
     public function test_super_admin_can_view_agency(): void

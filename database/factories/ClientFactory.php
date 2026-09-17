@@ -49,6 +49,7 @@ class ClientFactory extends Factory
             'company_phone'      => fake()->phoneNumber(),
             'company_email'      => fake()->unique()->companyEmail(),
             'company_ice'        => (string) fake()->numerify('##########'),
+            'company_rc'         => (string) fake()->numerify('#########'),
             'company_address'    => fake()->address(),
             'company_city'       => fake()->randomElement(['Casablanca', 'Rabat', 'Marrakech']),
             'company_country'    => 'MA',
