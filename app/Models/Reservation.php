@@ -33,6 +33,8 @@ class Reservation extends Model implements HasMedia, Auditable
         'payment_status', 'payment_method',
         'initial_mileage', 'final_mileage',
         'fuel_level_pickup', 'fuel_level_return',
+        'insurance_included', 'replacement_vehicle_included', 'replacement_vehicle',
+        'tire_replacement', 'all_risk_franchise_pct', 'fuel_included', 'extra_km_rate', 'return_km',
         'notes', 'agent_notes', 'cancellation_reason', 'cancelled_at',
     ];
 
@@ -60,6 +62,12 @@ class Reservation extends Model implements HasMedia, Auditable
             'deposit_paid_at'     => 'datetime',
             'initial_mileage'     => 'integer',
             'final_mileage'       => 'integer',
+            'insurance_included'  => 'boolean',
+            'replacement_vehicle_included' => 'boolean',
+            'all_risk_franchise_pct' => 'decimal:2',
+            'fuel_included'       => 'boolean',
+            'extra_km_rate'       => 'decimal:2',
+            'return_km'           => 'integer',
             'cancelled_at'        => 'datetime',
             'contract_generated_at' => 'datetime',
             'is_favorable'        => 'boolean',
@@ -194,10 +202,8 @@ class Reservation extends Model implements HasMedia, Auditable
 
     /**
      * Whole calendar months elapsed since pickup, capped at the contracted
-     * duration — purely time-based (for the "durée" progress bar), NOT the
-     * amount currently billable (see getMonthsDueAttribute below, which is
-     * this value + 1, matching the "first month due immediately" rule).
-     * 0 for non-LLD reservations.
+     * duration — purely time-based (for the "durée" progress bar and the
+     * months-due calculation). 0 for non-LLD reservations.
      */
     public function getMonthsElapsedAttribute(): int
     {
@@ -209,9 +215,11 @@ class Reservation extends Model implements HasMedia, Auditable
 
     /**
      * How many monthly installments are due as of today: the first month is
-     * due at signing (day 0), each subsequent whole month elapsed adds one
-     * more — e.g. a 24-month contract at 4000 MAD/month owes 4000 MAD on day
-     * 0, 8000 MAD once 1 full month has passed, etc. Capped at total_months.
+     * due at the END of the first month (the client pays at the end of each
+     * month), each whole month elapsed since pickup adds one installment —
+     * e.g. a 24-month contract at 4000 MAD/month owes 0 MAD at signing,
+     * 4000 MAD once 1 full month has passed, 8000 MAD once 2 full months
+     * have passed, etc. Capped at total_months.
      * 0 for non-LLD reservations.
      */
     public function getMonthsDueAttribute(): int
@@ -219,13 +227,14 @@ class Reservation extends Model implements HasMedia, Auditable
         if ($this->rental_unit !== 'month' || !$this->total_months) {
             return 0;
         }
-        return min($this->total_months, $this->months_elapsed + 1);
+        return min($this->total_months, $this->months_elapsed);
     }
 
     /**
      * The LLD "credit" basis: what's actually owed so far, NOT the full
      * contract value — this is what makes a 24-month, 96 000 MAD contract
-     * show a 4 000 MAD credit at signing rather than the full amount.
+     * show 0 MAD credit at signing (first installment due only at the end of
+     * the first month) rather than the full 96 000.
      * Falls back to total_amount for non-LLD reservations (no proration).
      */
     public function getAmountDueSoFarAttribute(): float
@@ -241,17 +250,19 @@ class Reservation extends Model implements HasMedia, Auditable
      * (credit KPIs / credit lists) where hydrating every model would be
      * wasteful. MUST stay in sync with that accessor and with
      * getMonthsDueAttribute(): an LLD contract (rental_unit = 'month') owes
-     * monthly_rate x months due so far — first month at signing, +1 per whole
-     * calendar month elapsed since pickup, capped at total_months — never the
-     * full multi-year contract value up front. Everything else owes its full
-     * total_amount. Assumes the reservations table is queried under its real
-     * name (not aliased). GREATEST(1, ...) mirrors the accessor's "first month
-     * due immediately" floor even when pickup_date is still in the future.
+     * monthly_rate x months due so far — the first month is due at the END of
+     * the first month (client pays at the end of each month), so installment
+     * N becomes due once N whole calendar months have elapsed since pickup,
+     * capped at total_months — never the full multi-year contract value up
+     * front. Everything else owes its full total_amount. Assumes the
+     * reservations table is queried under its real name (not aliased).
+     * GREATEST(0, ...) keeps it at zero before the first month elapses and
+     * when pickup_date is still in the future.
      */
     public static function amountDueSoFarSql(): string
     {
         return "CASE WHEN reservations.rental_unit = 'month'
-            THEN LEAST(reservations.total_amount, reservations.monthly_rate * LEAST(reservations.total_months, GREATEST(1, 1 + TIMESTAMPDIFF(MONTH, reservations.pickup_date, NOW()))))
+            THEN LEAST(reservations.total_amount, reservations.monthly_rate * LEAST(reservations.total_months, GREATEST(0, TIMESTAMPDIFF(MONTH, reservations.pickup_date, NOW()))))
             ELSE reservations.total_amount
         END";
     }

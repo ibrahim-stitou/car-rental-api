@@ -411,8 +411,10 @@ class AgencyController extends BaseController
      * Reservations (of the given agency-scoped query) still owing money as of
      * today — the sole source of client credit. LLD contracts count only the
      * months due so far, never the whole multi-year value (see
-     * Reservation::amountDueSoFarSql()), so a 58-month / 464 000 MAD contract
-     * signed last month shows an 8 000-16 000 MAD credit, not 464 000.
+     * Reservation::amountDueSoFarSql()) — the first installment is due at the
+     * END of the first month, so a 58-month / 464 000 MAD contract signed
+     * this month shows 0 MAD credit until the first month elapses, then
+     * 8 000 MAD once two months have elapsed (one due), not 464 000.
      */
     private function creditReservationsQuery($reservationsQuery)
     {

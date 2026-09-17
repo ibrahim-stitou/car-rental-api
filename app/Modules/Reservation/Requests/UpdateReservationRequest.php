@@ -32,6 +32,15 @@ class UpdateReservationRequest extends FormRequest
             'initial_mileage'     => 'nullable|integer|min:0',
             'final_mileage'       => 'nullable|integer|min:0',
             'notes'               => 'nullable|string',
+            // Options de la section « Loyer » du contrat LLD corporate
+            'insurance_included'         => 'nullable|boolean',
+            'replacement_vehicle_included' => 'nullable|boolean',
+            'replacement_vehicle'        => 'nullable|string|max:255',
+            'tire_replacement'           => 'nullable|string|max:255',
+            'all_risk_franchise_pct'     => 'nullable|numeric|min:0|max:100',
+            'fuel_included'              => 'nullable|boolean',
+            'extra_km_rate'              => 'nullable|numeric|min:0',
+            'return_km'                  => 'nullable|integer|min:0',
         ];
     }
 }

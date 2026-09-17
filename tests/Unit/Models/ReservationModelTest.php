@@ -41,7 +41,7 @@ class ReservationModelTest extends TestCase
             'client_id'  => $client->id,
         ]);
 
-        $this->assertMatchesRegularExpression('/^RES-\d{4}-\d{6}$/', $reservation->reservation_number);
+        $this->assertMatchesRegularExpression('/^RES-\d{6}$/', $reservation->reservation_number);
     }
 
     // ─── CALCULATE TOTAL ──────────────────────────────────────────────
@@ -252,6 +252,72 @@ class ReservationModelTest extends TestCase
 
         $this->assertInstanceOf(Client::class, $reservation->client);
         $this->assertEquals($client->id, $reservation->client->id);
+    }
+
+    // ─── LLD / PAIEMENT EN FIN DE MOIS ────────────────────────────────
+
+    public function test_lld_owes_zero_months_at_signing(): void
+    {
+        $agency  = Agency::factory()->create();
+        $vehicle = Vehicle::factory()->create(['agency_id' => $agency->id]);
+        $client  = Client::factory()->create(['agency_id' => $agency->id]);
+
+        $reservation = Reservation::factory()->make([
+            'agency_id'    => $agency->id,
+            'vehicle_id'   => $vehicle->id,
+            'client_id'    => $client->id,
+            'rental_unit'  => 'month',
+            'monthly_rate' => 4000,
+            'total_months' => 24,
+            'pickup_date'  => now()->subWeek(),   // moins d'un mois complet écoulé
+            'return_date'  => now()->addMonths(23),
+        ]);
+
+        // Le 1er mois n'est dû qu'à la fin du 1er mois — rien n'est dû ici.
+        $this->assertSame(0, $reservation->months_due);
+        $this->assertSame(0.0, $reservation->amount_due_so_far);
+    }
+
+    public function test_lld_owes_one_month_after_first_month_end(): void
+    {
+        $agency  = Agency::factory()->create();
+        $vehicle = Vehicle::factory()->create(['agency_id' => $agency->id]);
+        $client  = Client::factory()->create(['agency_id' => $agency->id]);
+
+        $reservation = Reservation::factory()->make([
+            'agency_id'    => $agency->id,
+            'vehicle_id'   => $vehicle->id,
+            'client_id'    => $client->id,
+            'rental_unit'  => 'month',
+            'monthly_rate' => 4000,
+            'total_months' => 24,
+            'pickup_date'  => now()->subMonths(1)->subDay(),
+            'return_date'  => now()->addMonths(22),
+        ]);
+
+        $this->assertSame(1, $reservation->months_due);
+        $this->assertSame(4000.0, $reservation->amount_due_so_far);
+    }
+
+    public function test_lld_months_due_capped_at_contract_length(): void
+    {
+        $agency  = Agency::factory()->create();
+        $vehicle = Vehicle::factory()->create(['agency_id' => $agency->id]);
+        $client  = Client::factory()->create(['agency_id' => $agency->id]);
+
+        $reservation = Reservation::factory()->make([
+            'agency_id'    => $agency->id,
+            'vehicle_id'   => $vehicle->id,
+            'client_id'    => $client->id,
+            'rental_unit'  => 'month',
+            'monthly_rate' => 4000,
+            'total_months' => 3,
+            'pickup_date'  => now()->subMonths(4),
+            'return_date'  => now()->subMonth(),
+        ]);
+
+        $this->assertSame(3, $reservation->months_due);
+        $this->assertSame(12000.0, $reservation->amount_due_so_far);
     }
 }
 

@@ -280,9 +280,10 @@ class ClientController extends BaseController
             ->sum('reservation_payments.amount');
 
         // Outstanding credit counts only what's owed as of today: for an LLD
-        // contract that's the months due so far (first month at signing, +1
-        // per whole month elapsed, capped at the contract length), NOT the
-        // full multi-year value — see Reservation::amountDueSoFarSql().
+        // contract that's the months due so far (first month due at the END of
+        // the first month, +1 per whole month elapsed, capped at the contract
+        // length), NOT the full multi-year value — see
+        // Reservation::amountDueSoFarSql().
         $creditRows = (clone $rq)->whereIn('status', ['completed', 'active'])
             ->selectRaw(
                 'reservations.id, reservation_number, reservations.rental_unit, reservations.pickup_date, '

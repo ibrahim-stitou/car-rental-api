@@ -39,6 +39,15 @@ class StoreReservationRequest extends FormRequest
             'initial_mileage'        => 'nullable|integer|min:0',
             'notes'                  => 'nullable|string',
             'agent_notes'            => 'nullable|string',
+            // Options de la section « Loyer » du contrat LLD corporate
+            'insurance_included'         => 'nullable|boolean',
+            'replacement_vehicle_included' => 'nullable|boolean',
+            'replacement_vehicle'        => 'nullable|string|max:255',
+            'tire_replacement'           => 'nullable|string|max:255',
+            'all_risk_franchise_pct'     => 'nullable|numeric|min:0|max:100',
+            'fuel_included'              => 'nullable|boolean',
+            'extra_km_rate'              => 'nullable|numeric|min:0',
+            'return_km'                  => 'nullable|integer|min:0',
             // Optional deposit taken at the moment of booking — recorded atomically
             // as part of reservation creation (gated by create-reservation only),
             // distinct from later payments which require the manage-payment permission.

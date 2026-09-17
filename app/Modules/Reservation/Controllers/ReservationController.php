@@ -606,10 +606,11 @@ class ReservationController extends BaseController
         $agencyId = $request->query('agency_id');
 
         // LLD (rental_unit = 'month') contracts are never owed in full up
-        // front — only the months due so far (first month at signing, +1 per
-        // whole month elapsed since, capped at the contract length; mirrors
-        // Reservation::getAmountDueSoFarAttribute()). A 24-month, 96 000 MAD
-        // contract must show a 4 000 MAD credit at signing, not 96 000.
+        // front — only the months due so far (first month due at the END of
+        // the first month, +1 per whole month elapsed since, capped at the
+        // contract length; mirrors Reservation::getAmountDueSoFarAttribute()).
+        // A 24-month, 96 000 MAD contract shows 0 MAD credit at signing, then
+        // 4 000 MAD credit once the first month has elapsed — not 96 000.
         $credits = \App\Models\Reservation::query()
             // Migrated reservations are a pure historical archive (forced to
             // completed/paid regardless of their real original status) and

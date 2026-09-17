@@ -15,16 +15,16 @@
         .outer { border: 1px solid #000; }
         .outer + .outer { border-top: none; }
 
-        .main-title {
-            text-align: center;
-            font-size: 16px;
-            font-weight: bold;
-            color: #1a3a8f;
-            letter-spacing: 0.6px;
-            padding: 6px 0 2px;
-        }
-        .contract-ref { text-align: center; font-size: 9.5px; margin-bottom: 12px; }
+        .contract-ref { text-align: right; font-size: 16px; font-weight: bold; margin-bottom: 12px; padding-right: 12px; }
         .contract-ref b { color: #c0392b; }
+
+        .header-app { margin: 6px 0 10px 0; }
+        .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .header-table td { vertical-align: middle; border: none; }
+        .header-logo-cell { text-align: left; padding-left: 8px; width: 35%; }
+        .header-logo-cell img { max-width: 140px; max-height: 60px; }
+        .header-ref-cell { text-align: right; width: 65%; padding-right: 12px; }
+        .header-ref-cell .contract-ref { margin-bottom: 0; }
 
         .col-title {
             background: #eef1f6;
@@ -38,6 +38,7 @@
         .acct-table .val { font-weight: bold; }
         .acct-table .half { width: 50%; }
         .acct-table .hairline { border-bottom: 1px solid #000; }
+        .acct-table .addr { padding: 6px 10px; line-height: 1.7; }
 
         .veh-table td { border-bottom: 1px solid #ddd; padding: 4px 10px; font-size: 8.8px; }
         .veh-table .lbl { width: 15%; color: #444; }
@@ -53,30 +54,27 @@
             border-bottom: 1px solid #000;
         }
 
-        .auth-block { padding: 8px 12px; font-size: 8.6px; line-height: 1.7; text-align: justify; }
-        .auth-block p { margin-bottom: 8px; }
-        .auth-line { margin: 2px 0; }
-        .auth-field { border-bottom: 1px dotted #777; padding: 4px 2px; font-weight: bold; min-height: 14px; }
-
         .echeance { border-collapse: collapse; width: 100%; }
         .echeance td { border-bottom: 1px solid #ddd; padding: 5px 12px; font-size: 8.8px; }
+        .echeance td.no-border { border-bottom: none; padding-left: 0; padding-right: 0; }
         .echeance .lbl { width: 40%; color: #444; }
         .echeance .val { font-weight: bold; }
+        .km-table { width: 100%; border-collapse: collapse; }
+        .km-cell { width: 50%; vertical-align: top; border-bottom: none; padding-left: 12px; }
+        .km-cell + .km-cell { border-left: 1px solid #ddd; padding-left: 12px; }
+        .km-lbl { display: inline-block; font-weight: normal; color: #444; margin-right: 8px; }
 
         .sig-table td { padding: 12px; font-size: 8.8px; width: 50%; vertical-align: top; }
         .sig-table .sig-title { font-weight: bold; margin-bottom: 6px; }
         .sig-table .fait { margin-top: 8px; font-size: 8.6px; }
-        .sig-space { height: 46px; position: relative; border-bottom: 1px solid #999; }
-        .sig-img { position: absolute; left: 0; bottom: 0; max-height: 44px; max-width: 130px; }
-        .stamp-img { position: absolute; right: 8px; bottom: 0; max-height: 66px; max-width: 100px; opacity: 0.85; }
+        .sig-space { height: 110px; position: relative; border-bottom: 1px solid #999; }
+        .sig-img { position: absolute; left: 0; bottom: 0; max-height: 40px; max-width: 130px; }
+        .stamp-img { position: absolute; right: 8px; bottom: 0; max-height: 50px; max-width: 90px; opacity: 0.85; }
 
         .footer-note { text-align: center; font-size: 6.5px; color: #999; padding-top: 10px; }
     </style>
 </head>
 <body>
-
-<div class="main-title">ORDRE DE PRELEVEMENT AUTOMATIQUE PERMANENT ET IRREVOCABLE</div>
-<div class="contract-ref">CONTRAT DE LOCATION N° : <b>{{ $reservation->reservation_number ?? '—' }}</b></div>
 
 @php
     $client = $reservation->client;
@@ -85,16 +83,31 @@
     $lessorName = $reservation->agency?->name ?? $company['name'] ?? config('app.name');
 @endphp
 
+@if($logoDataUrl)
+<div class="header-app">
+    <table class="header-table">
+        <tr>
+            <td class="header-logo-cell">@if($logoDataUrl)<img src="{{ $logoDataUrl }}" alt="Logo" />@endif</td>
+            <td class="header-ref-cell">
+                <div class="contract-ref">CONTRAT LLD N° : <b>{{ $reservation->reservation_number ?? '—' }}</b></div>
+            </td>
+        </tr>
+    </table>
+</div>
+@else
+<div class="contract-ref">CONTRAT LLD N° : <b>{{ $reservation->reservation_number ?? '—' }}</b></div>
+@endif
+
 <table class="outer">
     <tr>
         <td class="half" style="border-right:1px solid #000;">
-            <div class="col-title">Nom et adresse du titulaire du compte à débiter</div>
+            <div class="col-title">Nom et adresse du locataire</div>
             <table class="acct-table">
                 <tr>
                     <td class="lbl">Raison sociale :</td>
                     <td class="val">{{ $client?->company_name ?? '—' }}</td>
                 </tr>
-                <tr>
+                <tr class="addr">
                     <td class="lbl">Adresse :</td>
                     <td class="val">{{ $client?->company_address ?? '—' }}</td>
                 </tr>
@@ -129,19 +142,23 @@
             </table>
         </td>
         <td class="half">
-            <div class="col-title">Nom et adresse du titulaire du compte à créditer</div>
+            <div class="col-title">Nom et adresse du loueur</div>
             <table class="acct-table">
                 <tr>
                     <td class="lbl">Raison sociale :</td>
                     <td class="val">{{ $lessorName }}</td>
                 </tr>
-                <tr>
+                <tr class="addr">
                     <td class="lbl">Adresse :</td>
                     <td class="val">{{ $reservation->agency?->address ?? $company['address'] ?? '—' }}</td>
                 </tr>
                 <tr>
                     <td class="lbl">Ville / Pays :</td>
                     <td class="val">{{ trim(implode(' ', array_filter([$reservation->agency?->city ?? $company['city'] ?? null, $company['country'] ?? null]))) ?: '—' }}</td>
+                </tr>
+                <tr>
+                    <td class="lbl">Téléphone :</td>
+                    <td class="val">{{ $reservation->agency?->phone ?? $company['phone'] ?? '—' }}</td>
                 </tr>
                 <tr class="hairline">
                     <td class="lbl"><b>Banque :</b></td>
@@ -204,39 +221,63 @@
     @endif
 </table>
 
-<div class="section-title" style="margin-top:10px;">Autorisation Client</div>
-<div class="auth-block outer">
-    <p>
-        - Nous soussignés : <span class="auth-field">{{ $client?->company_name ?? '' }}</span><br>
-        - Raison sociale : <span class="auth-field">{{ $client?->company_name ?? '' }}</span><br>
-        - N° Registre de Commerce : <span class="auth-field">{{ $client?->company_rc ?? '' }}</span>
-    </p>
-    <p>
-        Donnons ordre irrévocable de débiter sans autre avis notre compte ci-dessus de tous les prélèvements ordonnés par la société
-        <b>{{ $lessorName }}</b> en sa faveur.
-    </p>
-    <p>
-        Nous nous engageons, à ce que notre compte bancaire soit suffisamment approvisionné à la date de chaque échéance et ce, jusqu'au
-        jour de son prélèvement effectif.
-    </p>
-    <p>
-        Nous nous engageons à ne pas faire opposition aux prélèvements faits en faveur de la société <b>{{ $lessorName }}</b>.
-    </p>
-    <p>
-        Il est bien entendu qu'en cas de litige sur un prélèvement, nous réglerons le différend avec l'organisme ci-dessus désigné. Vous
-        n'aurez donc pas à nous aviser de l'exécution desdites opérations hors de l'extrait de compte et des avis de débit éventuels que vous
-        nous adresserez.
-    </p>
-    <p>
-        En cas de paiement différé, nous vous donnons ordre irrévocable et permanent de débiter notre compte ci-dessus des indemnités
-        de retard au taux de 3% par mois ou fraction de mois qui pourront être présentées sous forme d'avis de prélèvement.
-    </p>
-</div>
+<div class="section-title" style="margin-top:10px;">Loyer</div>
+<table class="echeance outer">
+    <tr>
+        <td class="lbl">Assurance, carte grise, vignette :</td>
+        <td class="val">{{ $reservation->insurance_included ? 'Inclus' : 'Non inclus' }}</td>
+    </tr>
+    <tr>
+        <td class="lbl">Voiture de remplacement :</td>
+        <td class="val">
+            {{ $reservation->replacement_vehicle_included ? 'Inclus' : 'Non inclus' }}
+            @if($reservation->replacement_vehicle_included && $reservation->replacement_vehicle)
+                — {{ $reservation->replacement_vehicle }}
+            @endif
+        </td>
+    </tr>
+    <tr>
+        <td class="lbl">Remplacement de pneumatiques :</td>
+        <td class="val">{{ $reservation->tire_replacement ?: '—' }}</td>
+    </tr>
+    <tr>
+        <td class="lbl">Assurance tout risque :</td>
+        <td class="val">
+            @if($reservation->all_risk_franchise_pct !== null)
+                Franchise {{ number_format((float) $reservation->all_risk_franchise_pct, 0, ',', ' ') }}% de la valeur à neuf du véhicule
+            @else
+                —
+            @endif
+        </td>
+    </tr>
+    <tr>
+        <td class="lbl">Carburants :</td>
+        <td class="val">{{ $reservation->fuel_included ? 'Inclus' : 'Non inclus' }}</td>
+    </tr>
+    <tr>
+        <td class="val no-border" colspan="2">
+            <table class="km-table">
+                <tr>
+                    <td class="km-cell">
+                        <span class="km-lbl">Kilométrage de retour :</span>&nbsp;&nbsp;<b>{{ $reservation->return_km !== null ? number_format($reservation->return_km) : '—' }}</b>
+                    </td>
+                    <td class="km-cell">
+                        <span class="km-lbl">Kilométrage SUP HT :</span>&nbsp;&nbsp;<b>{{ $reservation->extra_km_rate !== null ? number_format((float) $reservation->extra_km_rate, 2, ',', ' ') . ' dhs' : '—' }}</b>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
 
 <div class="section-title" style="margin-top:10px;">Détail des échéances</div>
 <table class="echeance outer">
     <tr>
         <td class="lbl">Loyer TTC :</td>
+        <td class="val">{{ number_format((float) ($reservation->total_amount ?: ($reservation->monthly_rate * $reservation->total_months)), 2, ',', ' ') }} dhs</td>
+    </tr>
+    <tr>
+        <td class="lbl">Loyer mensuel :</td>
         <td class="val">{{ number_format((float) ($reservation->monthly_rate ?? 0), 2, ',', ' ') }} dhs</td>
     </tr>
     <tr>
@@ -248,7 +289,7 @@
         <td class="val">{{ $reservation->total_months ?? '—' }} mois</td>
     </tr>
     <tr>
-        <td class="lbl">Prélèvement mensuel</td>
+        <td class="lbl">Virement mensuel</td>
         <td class="val">jusqu'au règlement par le locataire des différentes charges qui lui incombent</td>
     </tr>
 </table>
@@ -256,22 +297,22 @@
 <table class="sig-table outer">
     <tr>
         <td>
-            <div class="sig-title">Signature autorisée du titulaire du compte</div>
+            <div class="sig-title">Signature et cachet du locataire</div>
             <div class="sig-space">
                 @if($signatureDataUrl)
                     <img src="{{ $signatureDataUrl }}" class="sig-img" alt="Signature">
                 @endif
             </div>
-            <div class="fait">Fait à : {{ $reservation->pickup_location ?? '....................' }} le {{ $pickup?->format('d/m/Y') ?? '..../..../......' }}</div>
+            <div class="fait">Fait à : ................................................ le ..../..../............</div>
         </td>
         <td>
-            <div class="sig-title">Signature autorisée et cachet de la banque</div>
+            <div class="sig-title">Signature et cachet du loueur</div>
             <div class="sig-space">
                 @if($stampDataUrl)
                     <img src="{{ $stampDataUrl }}" class="stamp-img" alt="Cachet">
                 @endif
             </div>
-            <div class="fait">Fait à : {{ $reservation->pickup_location ?? '....................' }} le {{ $pickup?->format('d/m/Y') ?? '..../..../......' }}</div>
+            <div class="fait">Fait à : ................................................ le ..../..../............</div>
         </td>
     </tr>
 </table>
