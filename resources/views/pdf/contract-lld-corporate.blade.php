@@ -224,7 +224,7 @@
 <div class="section-title" style="margin-top:10px;">Loyer</div>
 <table class="echeance outer">
     <tr>
-        <td class="lbl">Assurance, carte grise, vignette :</td>
+        <td class="lbl">Assurance, carte grise, vignette, autorisation de circulation :</td>
         <td class="val">{{ $reservation->insurance_included ? 'Inclus' : 'Non inclus' }}</td>
     </tr>
     <tr>
