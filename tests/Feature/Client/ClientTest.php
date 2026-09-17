@@ -82,7 +82,7 @@ class ClientTest extends TestCase
         $user = $this->createSuperAdmin();
 
         $data = [
-            'agency_id'                => $this->agency->id,
+            'agency_ids'               => [$this->agency->id],
             'first_name'               => 'Ahmed',
             'last_name'                => 'Benali',
             'email'                    => 'ahmed.benali@example.com',
@@ -113,7 +113,7 @@ class ClientTest extends TestCase
         $user = $this->createAgent();
 
         $data = [
-            'agency_id'  => $this->agency->id,
+            'agency_ids' => [$this->agency->id],
             'first_name' => 'Sara',
             'last_name'  => 'Idrissi',
             'email'      => 'sara@example.com',
@@ -130,7 +130,7 @@ class ClientTest extends TestCase
         $user = $this->createViewer();
 
         $response = $this->authAs($user)->postJson('/api/v1/clients', [
-            'agency_id'  => $this->agency->id,
+            'agency_ids' => [$this->agency->id],
             'first_name' => 'Test',
             'last_name'  => 'User',
             'email'      => 'test@example.com',
@@ -154,7 +154,7 @@ class ClientTest extends TestCase
         $user = $this->createSuperAdmin();
 
         $response = $this->authAs($user)->postJson('/api/v1/clients', [
-            'agency_id'  => $this->agency->id,
+            'agency_ids' => [$this->agency->id],
             'first_name' => 'Test',
             'last_name'  => 'User',
             'email'      => 'invalid-email',
@@ -162,6 +162,121 @@ class ClientTest extends TestCase
         ]);
 
         $response->assertStatus(422);
+    }
+
+    // ─── PERSONNE MORALE ──────────────────────────────────────────────
+
+    public function test_user_with_permission_can_create_moral_client(): void
+    {
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->postJson('/api/v1/clients', [
+            'agency_ids'         => [$this->agency->id],
+            'client_type'        => 'moral',
+            'company_name'       => 'Acme SARL',
+            'company_type'       => 'SARL',
+            'company_ice'        => '001234567000089',
+            'company_address'    => '12 Boulevard Zérktouni',
+            'company_city'       => 'Casablanca',
+            'company_country'    => 'MA',
+            'email'              => 'contact@acme.example',
+            'phone'              => '+212 600 555 666',
+            'bank_name'          => 'Attijariwafa Bank',
+            'bank_account_name'  => 'Acme SARL',
+            'bank_account_number' => 'RIBA00000001',
+            'bank_address'       => 'Casablanca',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('clients', [
+            'client_type'         => 'moral',
+            'company_name'        => 'Acme SARL',
+            'company_ice'         => '001234567000089',
+            'bank_account_number' => 'RIBA00000001',
+            'first_name'          => null,
+            'last_name'           => null,
+        ]);
+    }
+
+    public function test_create_moral_client_fails_without_company_name(): void
+    {
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->postJson('/api/v1/clients', [
+            'agency_ids'  => [$this->agency->id],
+            'client_type' => 'moral',
+            'email'       => 'contact@acme2.example',
+            'phone'       => '+212 600 777 888',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['company_name']);
+    }
+
+    public function test_moral_client_strips_personal_fields(): void
+    {
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->postJson('/api/v1/clients', [
+            'agency_ids'            => [$this->agency->id],
+            'client_type'           => 'moral',
+            'company_name'          => 'Acme SARL',
+            'company_address'       => '12 Boulevard Zérktouni',
+            'email'                 => 'contact@acme3.example',
+            'phone'                 => '+212 600 999 000',
+            'first_name'            => 'NeDoitPasExister',
+            'last_name'             => 'Nope',
+            'id_number'             => 'AB999999',
+            'driving_license_number' => '12/999999',
+        ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('clients', [
+            'company_name'           => 'Acme SARL',
+            'first_name'             => null,
+            'last_name'              => null,
+            'id_number'              => null,
+            'driving_license_number' => null,
+        ]);
+    }
+
+    public function test_physical_client_strips_company_fields(): void
+    {
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->postJson('/api/v1/clients', [
+            'agency_ids'   => [$this->agency->id],
+            'first_name'   => 'Ahmed',
+            'last_name'    => 'Benali',
+            'email'        => 'ahmed2@example.com',
+            'phone'        => '+212 600 111 333',
+            'company_name' => 'NeDoitPasExister',
+            'bank_name'    => 'Nope',
+        ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('clients', [
+            'company_name' => null,
+            'bank_name'    => null,
+        ]);
+    }
+
+    public function test_list_clients_filter_by_client_type_moral(): void
+    {
+        Client::factory()->moral()->create();
+        Client::factory()->count(2)->create();
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->getJson('/api/v1/clients?client_type=moral');
+
+        $response->assertOk();
+        $ids = collect($response->json('data'))->pluck('id');
+        $this->assertCount(1, $ids);
+        $this->assertTrue(Client::whereIn('id', $ids)->get()->every(fn($c) => $c->client_type === 'moral'));
     }
 
     // ─── SHOW ─────────────────────────────────────────────────────────
@@ -205,6 +320,42 @@ class ClientTest extends TestCase
             'id'         => $client->id,
             'first_name' => 'NouveauPrenom',
         ]);
+    }
+
+    public function test_user_with_permission_can_update_moral_client(): void
+    {
+        $client = Client::factory()->moral()->create();
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->putJson("/api/v1/clients/{$client->id}", [
+            'client_type'    => 'moral',
+            'company_name'   => 'Nouvelle Raison Sociale',
+            'company_address' => 'Nouvelle adresse',
+            'bank_name'      => 'BMCE Bank',
+        ]);
+
+        $response->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('clients', [
+            'id'           => $client->id,
+            'company_name' => 'Nouvelle Raison Sociale',
+            'bank_name'    => 'BMCE Bank',
+        ]);
+    }
+
+    public function test_show_moral_client_returns_full_name_and_company(): void
+    {
+        $client = Client::factory()->moral()->create();
+        $user = $this->createSuperAdmin();
+
+        $response = $this->authAs($user)->getJson("/api/v1/clients/{$client->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('data.client_type', 'moral')
+            ->assertJsonPath('data.full_name', $client->company_name)
+            ->assertJsonPath('data.first_name', null)
+            ->assertJsonPath('data.company_ice', $client->company_ice);
     }
 
     public function test_viewer_cannot_update_client(): void

@@ -24,6 +24,10 @@ class Client extends Model implements HasMedia, Auditable
 
     protected $fillable = [
         'first_name', 'last_name', 'email', 'phone',
+        'client_type',
+        'company_name', 'company_type', 'company_phone', 'company_email', 'company_ice',
+        'company_address', 'company_city', 'company_country',
+        'bank_name', 'bank_account_name', 'bank_account_number', 'bank_address',
         'date_of_birth', 'birth_place', 'nationality', 'id_type', 'id_number', 'id_expiry_date',
         'driving_license_number', 'driving_license_category', 'driving_license_expiry',
         'license_issue_date', 'license_issue_place',
@@ -47,7 +51,11 @@ class Client extends Model implements HasMedia, Auditable
     // Accessors
     public function getFullNameAttribute(): string
     {
-        return "{$this->first_name} {$this->last_name}";
+        if ($this->client_type === 'moral' && $this->company_name) {
+            return $this->company_name;
+        }
+
+        return trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
     }
 
     public function getIsLicenseValidAttribute(): bool

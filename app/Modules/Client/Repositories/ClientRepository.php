@@ -15,7 +15,10 @@ class ClientRepository extends BaseRepository
 
     public function getSearchFields(): array
     {
-        return ['first_name', 'last_name', 'email', 'phone', 'id_number', 'driving_license_number'];
+        return [
+            'first_name', 'last_name', 'email', 'phone', 'id_number', 'driving_license_number',
+            'company_name', 'company_email', 'company_phone', 'company_ice',
+        ];
     }
 
     protected function applyFilters(Builder $query, array $filters): Builder

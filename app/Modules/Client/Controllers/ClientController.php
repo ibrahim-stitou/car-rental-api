@@ -20,6 +20,7 @@ class ClientController extends BaseController
      * @OA\Get(path="/clients", summary="Liste des clients", tags={"Clients"}, security={{"bearerAuth":{}}},
      *   @OA\Parameter(name="agency_id", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="is_blacklisted", in="query", @OA\Schema(type="boolean")),
+     *   @OA\Parameter(name="client_type", in="query", @OA\Schema(type="string", enum={"physical","moral"})),
      *   @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
      *   @OA\Parameter(name="per_page", in="query", @OA\Schema(type="integer", default=15)),
      *   @OA\Response(response=200, description="Success")
@@ -27,7 +28,7 @@ class ClientController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->only(['agency_id', 'is_blacklisted', 'city', 'search']);
+        $filters = $request->only(['agency_id', 'is_blacklisted', 'city', 'client_type', 'search']);
         $data = $this->service->list($filters, $request->integer('per_page', 15));
         return $this->paginated($data, ClientResource::class);
     }

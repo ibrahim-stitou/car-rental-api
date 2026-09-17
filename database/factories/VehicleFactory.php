@@ -39,7 +39,7 @@ class VehicleFactory extends Factory
             'registration_number' => strtoupper(fake()->bothify('??-###-??')),
             'vin'                 => strtoupper(fake()->bothify('#################')),
             'color'               => fake()->randomElement(['Blanc', 'Noir', 'Gris', 'Rouge', 'Bleu', 'Argent']),
-            'category'            => fake()->randomElement(['economy', 'compact', 'midsize', 'suv', 'luxury', 'van']),
+            'category'            => fake()->randomElement(['sedan', 'suv', 'van', 'truck', 'convertible', 'coupe', 'hatchback', 'minivan']),
             'fuel_type'           => fake()->randomElement(['gasoline', 'diesel', 'electric', 'hybrid']),
             'transmission'        => fake()->randomElement(['manual', 'automatic']),
             'seats'               => fake()->randomElement([2, 4, 5, 7]),
